@@ -1,0 +1,53 @@
+%import common.INT
+%import common.WS
+
+%ignore WS
+
+module: stmt*
+
+?stmt: print_stmt
+     | expr_stmt
+
+print_stmt: "print" expr _eos
+expr_stmt: expr _eos
+
+_eos: ";"+
+
+?expr: logical_or
+
+?logical_or: logical_and
+           | logical_or "||" logical_and -> logical_or
+
+?logical_and: equality
+            | logical_and "&&" equality -> logical_and
+
+?equality: comparison
+         | equality "==" comparison -> eq
+         | equality "!=" comparison -> neq
+
+?comparison: sum
+           | comparison ">" sum  -> gt
+           | comparison "<" sum  -> lt
+           | comparison ">=" sum -> gte
+           | comparison "<=" sum -> lte
+
+?sum: product
+    | sum "+" product -> add
+    | sum "-" product -> sub
+
+?product: unary
+        | product "*" unary -> mul
+        | product "/" unary -> div
+
+?unary: "+" unary -> add_unary
+      | "-" unary -> neg
+      | "!" unary -> logical_not
+      | primary
+
+?primary: INT
+        | TRUE
+        | FALSE
+        | "(" expr ")"
+
+TRUE: "true"
+FALSE: "false"

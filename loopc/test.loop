@@ -1,0 +1,13 @@
+print 2 * 3 + 4 / 2;
+
+print 5 == 5;
+print 4 != 8;
+
+print true;
+print false;
+
+print 3 + 4 && 5 + 7;
+print false && 3;
+
+print true || false;
+print false || 4;
