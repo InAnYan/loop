@@ -192,6 +192,18 @@ pub const VirtualMachine = struct {
                     }
                 },
 
+                .SetGlobal => {
+                    const val = try self.stackPeek();
+                    const str = try frame.chunk.getStringConstant(inst.SetGlobal.index);
+
+                    if (self.globals.contains(str)) {
+                        try self.globals.put(str, val);
+                    } else {
+                        try std.io.getStdErr().writer().print("Runtime error: undefined reference to '{s}'.\n", .{str.str});
+                        return RuntimeError.UndefinedReference;
+                    }
+                },
+
                 .Unknown => {
                     try std.io.getStdErr().writer().print("Runtime error: unknown opcode 0x{x}.\n", .{inst.Unknown.opcode});
                     return RuntimeError.UnknownOpcode;

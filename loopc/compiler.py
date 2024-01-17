@@ -5,6 +5,7 @@ from error_listener import ErrorListener
 
 from repr import LongInst, NumberValue, Opcode, StringValue, Value
 from loop_ast import (
+    Assignment,
     AstNode,
     BinaryOp,
     BinaryOpType,
@@ -14,6 +15,7 @@ from loop_ast import (
     Identifier,
     IntegerLiteral,
     Module,
+    NullLiteral,
     PrintStmt,
     SourcePosition,
     Stmt,
@@ -109,10 +111,24 @@ class ModuleCompiler:
                     StringValue(txt), pos, LongInst.PushConstant
                 )
 
+            case NullLiteral(pos):
+                self.emitter.opcode(Opcode.PushNull, pos)
+
             case VarExpr(pos, name):
                 self.emitter.add_and_process_constant(
                     StringValue(name.text), pos, LongInst.GetGlobal
                 )
+
+            case Assignment(pos, var, expr):
+                if not isinstance(var, VarExpr):
+                    self.error_listener.error(
+                        pos, "invalid assignment target (expected variable)"
+                    )
+                else:
+                    self.compile(expr)
+                    self.emitter.add_and_process_constant(
+                        StringValue(var.name.text), pos, LongInst.SetGlobal
+                    )
 
             case UnaryOp(pos, op, expr):
                 self.compile(expr)

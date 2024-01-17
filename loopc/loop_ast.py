@@ -49,7 +49,13 @@ class StringLiteral(Expr):
 
 @dataclass
 class NullLiteral(Expr):
-    pass
+    null: None = None
+
+
+@dataclass
+class Assignment(Expr):
+    var: Expr
+    expr: Expr
 
 
 class UnaryOpType(Enum):

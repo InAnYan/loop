@@ -151,6 +151,11 @@ pub const Chunk = struct {
                 return .{ .inst = .{ .GetGlobal = .{ .index = index } }, .offset = offset + 2 };
             },
 
+            .SetGlobal => {
+                const index = try self.getByte(offset + 1);
+                return .{ .inst = .{ .SetGlobal = .{ .index = index } }, .offset = offset + 2 };
+            },
+
             _ => {
                 return .{ .inst = .{ .Unknown = .{ .opcode = @intFromEnum(opcode) } }, .offset = offset + 1 };
             },

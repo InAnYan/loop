@@ -22,8 +22,6 @@ class Opcode(Enum):
     PushFalse = 15
     Greater = 16
     Less = 17
-
-    # NEW
     PushNull = 18
     DefineGlobal = 19
     GetGlobal = 20

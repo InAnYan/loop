@@ -24,7 +24,10 @@ expr_stmt: expr _eos
 
 _eos: ";"+
 
-?expr: logical_or
+?expr: assignment
+
+?assignment: logical_or
+           | logical_or "=" assignment -> assignment
 
 ?logical_or: logical_and
            | logical_or "||" logical_and -> logical_or

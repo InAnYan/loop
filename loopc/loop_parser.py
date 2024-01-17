@@ -8,6 +8,7 @@ from lark.lexer import Token
 from lark.tree import Meta
 
 from loop_ast import (
+    Assignment,
     BinaryOp,
     BinaryOpType,
     BoolLiteral,
@@ -69,6 +70,17 @@ def make_str(token: Token) -> str:
     return str(token)[1:-1]
 
 
+def tree(kind):
+    def fn(self: LarkTreeToLoopAst, meta: Meta, *args) -> kind:
+        return kind(self.make_pos(meta), *args)
+
+    return fn
+
+
+def return_none(x):
+    return None
+
+
 @v_args(inline=True, meta=True)
 class LarkTreeToLoopAst(Transformer):
     path: str
@@ -81,18 +93,13 @@ class LarkTreeToLoopAst(Transformer):
     def module(self, _meta: Meta, *stmts: List[Stmt]) -> Module:
         return Module(self.path, stmts)
 
-    def print_stmt(self, meta: Meta, expr: Expr) -> PrintStmt:
-        return PrintStmt(self.make_pos(meta), expr)
-
-    def expr_stmt(self, meta: Meta, expr: Expr) -> PrintStmt:
-        return ExprStmt(self.make_pos(meta), expr)
-
-    def var_decl(
-        self, meta: Meta, name: Identifier, expr: Optional[Expr] = None
-    ) -> VarDecl:
-        return VarDecl(self.make_pos(meta), name, expr)
+    print_stmt = tree(PrintStmt)
+    expr_stmt = tree(ExprStmt)
+    var_decl = tree(VarDecl)
 
     # Expressions.
+
+    assignment = tree(Assignment)
 
     logical_or = bin_op(BinaryOpType.LogicalOr)
     logical_and = bin_op(BinaryOpType.LogicalAnd)
@@ -114,8 +121,7 @@ class LarkTreeToLoopAst(Transformer):
     neg = unary_op(UnaryOpType.Negate)
     logical_not = unary_op(UnaryOpType.Not)
 
-    def var_expr(self, meta: Meta, name: Identifier) -> VarExpr:
-        return VarExpr(self.make_pos(meta), name)
+    var_expr = tree(VarExpr)
 
     # Tokens.
 
@@ -127,8 +133,7 @@ class LarkTreeToLoopAst(Transformer):
     IDENTIFIER = token_fn(Identifier, str)
     STRING = token_fn(StringLiteral, make_str)
 
-    def NULL(self, token: Token) -> NullLiteral:
-        return NullLiteral(self.make_pos(token))
+    NULL = token_fn(NullLiteral, return_none)
 
     # Private.
 

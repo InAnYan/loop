@@ -1,6 +1,6 @@
 const Chunk = @import("chunk.zig").Chunk;
 
-pub const Opcode = enum(u8) { Return = 0, PushConstant, Negate, Add, Subtract, Multiply, Divide, Print, Pop, Plus, Equal, Not, JumpIfFalse, JumpIfTrue, PushTrue, PushFalse, Greater, Less, PushNull, DefineGlobal, GetGlobal, _ };
+pub const Opcode = enum(u8) { Return = 0, PushConstant, Negate, Add, Subtract, Multiply, Divide, Print, Pop, Plus, Equal, Not, JumpIfFalse, JumpIfTrue, PushTrue, PushFalse, Greater, Less, PushNull, DefineGlobal, GetGlobal, SetGlobal, _ };
 
 pub const SimpleInstruction = struct {
     const Self = @This();
@@ -79,6 +79,7 @@ pub const Instruction = union(enum) {
     PushNull: SimpleInstruction,
     DefineGlobal: ConstantInstruction,
     GetGlobal: ConstantInstruction,
+    SetGlobal: ConstantInstruction,
 
     const Self = @This();
 
@@ -179,6 +180,10 @@ pub const Instruction = union(enum) {
 
             .GetGlobal => {
                 try self.GetGlobal.disassemble(writer, chunk, "GetGlobal", offset);
+            },
+
+            .SetGlobal => {
+                try self.SetGlobal.disassemble(writer, chunk, "SetGlobal", offset);
             },
         }
     }
