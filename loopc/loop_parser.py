@@ -1,6 +1,6 @@
 from __future__ import annotations
-from typing import Callable, List
-
+from typing import Callable, List, Optional
+import os
 from lark.lark import Lark
 from lark import v_args
 from lark.visitors import Transformer
@@ -13,17 +13,22 @@ from loop_ast import (
     BoolLiteral,
     Expr,
     ExprStmt,
+    Identifier,
     IntegerLiteral,
     Module,
+    NullLiteral,
     PrintStmt,
     SourcePosition,
     Stmt,
+    StringLiteral,
     UnaryOp,
     UnaryOpType,
+    VarDecl,
+    VarExpr,
 )
 
-
-GRAMMAR_PATH = "grammar.lark"
+dirname = os.path.dirname(__file__)
+GRAMMAR_PATH = os.path.join(dirname, "grammar.lark")
 
 
 def parse_loop_module(path: str, source: str) -> Module:
@@ -49,11 +54,15 @@ def bin_op(op: BinaryOpType) -> Callable[[Expr, Expr], BinaryOp]:
     return fn
 
 
-def bool_lit(b: bool) -> Callable[[Token], BoolLiteral]:
-    def fn(self: LarkTreeToLoopAst, token: Token) -> BoolLiteral:
-        return BoolLiteral(self.make_pos(token), b)
+def token_fn(kind, process):
+    def fn(self: LarkTreeToLoopAst, token: Token) -> kind:
+        return kind(self.make_pos(token), process(token))
 
     return fn
+
+
+def token_to_bool(token: Token) -> bool:
+    return str(token) == "true"
 
 
 @v_args(inline=True, meta=True)
@@ -73,6 +82,11 @@ class LarkTreeToLoopAst(Transformer):
 
     def expr_stmt(self, meta: Meta, expr: Expr) -> PrintStmt:
         return ExprStmt(self.make_pos(meta), expr)
+
+    def var_decl(
+        self, meta: Meta, name: Identifier, expr: Optional[Expr] = None
+    ) -> VarDecl:
+        return VarDecl(self.make_pos(meta), name, expr)
 
     # Expressions.
 
@@ -96,13 +110,21 @@ class LarkTreeToLoopAst(Transformer):
     neg = unary_op(UnaryOpType.Negate)
     logical_not = unary_op(UnaryOpType.Not)
 
+    def var_expr(self, meta: Meta, name: Identifier) -> VarExpr:
+        return VarExpr(self.make_pos(meta), name)
+
     # Tokens.
 
-    def INT(self, token: Token):
-        return IntegerLiteral(self.make_pos(token), int(token))
+    INT = token_fn(IntegerLiteral, int)
 
-    TRUE = bool_lit(True)
-    FALSE = bool_lit(False)
+    TRUE = token_fn(BoolLiteral, token_to_bool)
+    FALSE = token_fn(BoolLiteral, token_to_bool)
+
+    IDENTIFIER = token_fn(Identifier, str)
+    STRING = token_fn(StringLiteral, str)
+
+    def NULL(self, token: Token) -> NullLiteral:
+        return NullLiteral(self.make_pos(token))
 
     # Private.
 

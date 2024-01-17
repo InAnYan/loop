@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, auto
 
 
 class Opcode(Enum):
@@ -20,6 +20,17 @@ class Opcode(Enum):
     JumpIfTrue = 13
     PushTrue = 14
     PushFalse = 15
+    Greater = 16
+    Less = 17
+
+    # NEW
+
+
+class LongInst(Enum):
+    PushConstant = auto()
+    DefineGlobal = auto()
+    GetGlobal = auto()
+    SetGlobal = auto()
 
 
 class Value(ABC):
@@ -42,3 +53,17 @@ class BoolValue(Value):
 
     def make_json_object(self) -> dict:
         return {"type": "bool", "data": self.b}
+
+
+@dataclass
+class NullValue(Value):
+    def make_json_object(self) -> dict:
+        return {"type": "null"}
+
+
+@dataclass
+class StringValue(Value):
+    txt: str
+
+    def make_json_object(self) -> dict:
+        return {"type": "string", "data": self.txt}

@@ -1,6 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const VirtualMachine = @import("virtual_machine.zig").VirtualMachine;
+const Object = @import("objects.zig").Object;
 
 pub const MemoryManagerConfiguration = struct {
     parent_allocator: Allocator,
@@ -10,14 +11,20 @@ pub const MemoryManager = struct {
     conf: MemoryManagerConfiguration,
     vm: *VirtualMachine,
 
+    objects: ?*Object,
+
     const Self = @This();
 
     pub fn init(conf: MemoryManagerConfiguration, vm: *VirtualMachine) Self {
-        return .{ .conf = conf, .vm = vm };
+        return .{ .conf = conf, .vm = vm, .objects = null };
     }
 
     pub fn deinit(self: *Self) void {
-        _ = self;
+        var ptr = self.objects;
+        while (ptr) |next| {
+            ptr = next.next;
+            next.destroy(self.allocator());
+        }
     }
 
     pub fn allocator(self: *Self) Allocator {

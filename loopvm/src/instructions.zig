@@ -1,6 +1,6 @@
 const Chunk = @import("chunk.zig").Chunk;
 
-pub const Opcode = enum(u8) { Return = 0, PushConstant, Negate, Add, Subtract, Multiply, Divide, Print, Pop, Plus, Equal, Not, JumpIfFalse, JumpIfTrue, PushTrue, PushFalse, _ };
+pub const Opcode = enum(u8) { Return = 0, PushConstant, Negate, Add, Subtract, Multiply, Divide, Print, Pop, Plus, Equal, Not, JumpIfFalse, JumpIfTrue, PushTrue, PushFalse, Greater, Less, _ };
 
 pub const SimpleInstruction = struct {
     const Self = @This();
@@ -74,6 +74,8 @@ pub const Instruction = union(enum) {
     JumpIfTrue: JumpInstruction,
     PushTrue: SimpleInstruction,
     PushFalse: SimpleInstruction,
+    Greater: SimpleInstruction,
+    Less: SimpleInstruction,
 
     const Self = @This();
 
@@ -154,6 +156,14 @@ pub const Instruction = union(enum) {
 
             .PushFalse => {
                 try self.PushFalse.disassemble(writer, chunk, "PushFalse", offset);
+            },
+
+            .Greater => {
+                try self.Greater.disassemble(writer, chunk, "Greater", offset);
+            },
+
+            .Less => {
+                try self.Less.disassemble(writer, chunk, "Less", offset);
             },
         }
     }

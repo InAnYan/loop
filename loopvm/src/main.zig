@@ -22,6 +22,7 @@ pub fn main() !void {
         .user_output = std.io.getStdOut().writer(),
         .debug_output = std.io.getStdErr().writer(),
         .trace_execution = true,
+        .call_frame_count = 64,
         .stack_size = 256,
     };
 

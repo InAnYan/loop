@@ -29,7 +29,7 @@ pub const Chunk = struct {
         }
 
         for (object.get("constants").?.array.items) |elem| {
-            try chunk.constants.append(try Value.fromJSON(elem));
+            try chunk.constants.append(try Value.fromJSON(vm, elem));
         }
 
         for (object.get("lines").?.array.items) |elem| {
@@ -126,6 +126,14 @@ pub const Chunk = struct {
 
             .PushFalse => {
                 return .{ .inst = .{ .PushFalse = .{} }, .offset = offset + 1 };
+            },
+
+            .Greater => {
+                return .{ .inst = .{ .Greater = .{} }, .offset = offset + 1 };
+            },
+
+            .Less => {
+                return .{ .inst = .{ .Less = .{} }, .offset = offset + 1 };
             },
 
             _ => {

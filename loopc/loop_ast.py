@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import List
+from typing import List, Optional
 
 from repr import Opcode
 
@@ -9,6 +9,12 @@ from repr import Opcode
 class SourcePosition:
     path: str
     line: int
+
+
+@dataclass
+class Identifier:
+    pos: SourcePosition
+    text: str
 
 
 @dataclass
@@ -29,6 +35,21 @@ class IntegerLiteral(Expr):
 @dataclass
 class BoolLiteral(Expr):
     b: bool
+
+
+@dataclass
+class VarExpr(Expr):
+    name: Identifier
+
+
+@dataclass
+class StringLiteral(Expr):
+    text: str
+
+
+@dataclass
+class NullLiteral(Expr):
+    pass
 
 
 class UnaryOpType(Enum):
@@ -123,6 +144,12 @@ class PrintStmt(Stmt):
 @dataclass
 class ExprStmt(Stmt):
     expr: Expr
+
+
+@dataclass
+class VarDecl(Stmt):
+    name: Identifier
+    expr: Optional[Expr] = None
 
 
 @dataclass

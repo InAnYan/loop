@@ -1,9 +1,20 @@
 %import common.INT
 %import common.WS
+%import common.CPP_COMMENT -> LINE_COMMENT
+%import common.C_COMMENT -> MULTI_LINE_COMMENT
+%import common.CNAME -> IDENTIFIER
+%import common.ESCAPED_STRING -> STRING
 
 %ignore WS
+%ignore LINE_COMMENT
+%ignore MULTI_LINE_COMMENT
 
-module: stmt*
+module: decl*
+
+?decl: var_decl
+     | stmt
+
+var_decl: "var" IDENTIFIER ["=" expr] _eos
 
 ?stmt: print_stmt
      | expr_stmt
@@ -47,7 +58,11 @@ _eos: ";"+
 ?primary: INT
         | TRUE
         | FALSE
+        | NULL
+        | STRING
+        | IDENTIFIER -> var_expr
         | "(" expr ")"
 
 TRUE: "true"
 FALSE: "false"
+NULL: "null"

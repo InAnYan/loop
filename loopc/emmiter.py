@@ -2,7 +2,7 @@ from typing import List
 from error_listener import ErrorListener
 from loop_ast import SourcePosition
 
-from repr import Opcode, Value
+from repr import LongInst, Opcode, Value
 
 
 class Emitter:
@@ -20,7 +20,7 @@ class Emitter:
     def opcode(self, opcode: Opcode, pos: SourcePosition):
         self.byte(opcode.value, pos)
 
-    def constant(self, value: Value, pos: SourcePosition) -> int:
+    def add_constant(self, value: Value, pos: SourcePosition) -> int:
         self.constants.append(value)
         index = len(self.constants) - 1
 
@@ -29,10 +29,27 @@ class Emitter:
 
         return index
 
-    def push_constant(self, index: int, pos: SourcePosition):
+    def add_and_process_constant(self, value: Value, pos: SourcePosition, op: LongInst):
+        index = self.add_constant(value, pos)
+        self.long_inst(index, pos, op)
+
+    def long_inst(self, index: int, pos: SourcePosition, op: LongInst):
+        match op:
+            case LongInst.PushConstant:
+                self.long_inst_impl(index, pos, [Opcode.PushConstant])
+            case LongInst.DefineGlobal:
+                self.long_inst_impl(index, pos, [Opcode.DefineGlobal])
+            case LongInst.GetGlobal:
+                self.long_inst_impl(index, pos, [Opcode.GetGlobal])
+            case LongInst.SetGlobal:
+                self.long_inst_impl(index, pos, [Opcode.SetGlobal])
+
+    def long_inst_impl(self, index: int, pos: SourcePosition, lst: List[Opcode]):
+        # There is no check for correctness.
+
         if index < 256:
-            self.opcode(Opcode.PushConstant, pos)
-            self.byte(index, pos)
+            self.opcode(lst[0])
+            self.byte(index)
 
     def jump(self, opcode: Opcode, pos: SourcePosition) -> int:
         self.opcode(opcode, pos)

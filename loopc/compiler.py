@@ -1,8 +1,9 @@
+from dataclasses import dataclass
 from typing import List, Optional
 from emmiter import Emitter
 from error_listener import ErrorListener
 
-from repr import NumberValue, Opcode, Value
+from repr import LongInst, NumberValue, Opcode, StringValue, Value
 from loop_ast import (
     AstNode,
     BinaryOp,
@@ -10,24 +11,37 @@ from loop_ast import (
     BoolLiteral,
     Expr,
     ExprStmt,
+    Identifier,
     IntegerLiteral,
     Module,
     PrintStmt,
     SourcePosition,
     Stmt,
+    StringLiteral,
     UnaryOp,
+    VarDecl,
 )
+
+
+@dataclass
+class Local:
+    ident: Identifier
+    scope: int
 
 
 class ModuleCompiler:
     error_listener: ErrorListener
     module: Module
     emitter: Emitter
+    scope: int
+    locals: List[Local]
 
     def __init__(self, error_listener: ErrorListener, module: Module) -> None:
         self.error_listener = error_listener
         self.module = module
         self.emitter = Emitter(error_listener)
+        self.scope = 0
+        self.locals = []
 
     def compile_module(self) -> Optional[dict]:
         for stmt in self.module.stmts:
@@ -61,14 +75,23 @@ class ModuleCompiler:
                 self.compile(expr)
                 self.emitter.opcode(Opcode.Pop, pos)
 
+            case VarDecl(pos, name, expr):
+                if expr:
+                    self.compile(expr)
+                else:
+                    self.emitter.opcode(Opcode.PushNull)
+
+                self.emitter.long_inst(
+                    StringValue(name.str), pos, LongInst.DefineGlobal
+                )
+
             case _:
                 raise Exception(f"unhandled compile_stmt for {type(stmt)}")
 
     def compile_expr(self, expr: Expr):
         match expr:
             case IntegerLiteral(pos, num):
-                index = self.emitter.constant(NumberValue(num), pos)
-                self.emitter.push_constant(index, pos)
+                self.emitter.add_and_push_constant(NumberValue(num), pos)
 
             case BoolLiteral(pos, b):
                 if b:
@@ -77,6 +100,9 @@ class ModuleCompiler:
                     opcode = Opcode.PushFalse
 
                 self.emitter.opcode(opcode, pos)
+
+            case StringLiteral(pos, txt):
+                self.emitter.add_and_push_constant(StringValue(txt), pos)
 
             case UnaryOp(pos, op, expr):
                 self.compile(expr)

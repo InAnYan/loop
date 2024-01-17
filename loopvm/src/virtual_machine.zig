@@ -8,19 +8,27 @@ const instructions = @import("instructions.zig");
 const Opcode = instructions.Opcode;
 const Instruction = instructions.Instruction;
 const RuntimeError = @import("errors.zig").RuntimeError;
+const objects = @import("objects.zig");
 
 pub const VirtualMachineConfiguration = struct {
     user_output: std.fs.File.Writer,
     debug_output: std.fs.File.Writer,
     trace_execution: bool,
+    call_frame_count: usize,
     stack_size: usize,
 };
 
+const HASH_MAP_LOAD: u64 = 80;
+
 pub const VirtualMachine = struct {
     conf: VirtualMachineConfiguration,
+
     memory_manager: MemoryManager,
     call_frames: std.ArrayList(CallFrame),
     stack: std.ArrayList(Value),
+    strings: StringsType,
+
+    const StringsType = std.HashMap(*objects.StringObject, *objects.StringObject, objects.StringObject.InterningContext, HASH_MAP_LOAD);
 
     const Self = @This();
 
@@ -30,17 +38,22 @@ pub const VirtualMachine = struct {
         const allocator = self.memory_manager.allocator();
 
         self.call_frames = std.ArrayList(CallFrame).init(allocator);
+        try self.call_frames.ensureTotalCapacity(self.conf.call_frame_count);
+
         self.stack = std.ArrayList(Value).init(allocator);
         try self.stack.ensureTotalCapacity(self.conf.stack_size);
+
+        self.strings = StringsType.init(allocator);
     }
 
     pub fn deinit(self: *Self) void {
         self.memory_manager.deinit();
         self.call_frames.deinit();
         self.stack.deinit();
+        self.strings.deinit();
     }
 
-    pub fn getAllocator(self: *VirtualMachine) std.mem.Allocator {
+    pub fn getAllocator(self: *Self) std.mem.Allocator {
         return self.memory_manager.allocator();
     }
 
@@ -81,6 +94,11 @@ pub const VirtualMachine = struct {
                             try std.io.getStdErr().writer().print("Runtime error: wrong type, expected integer, got {s}.\n", .{@tagName(value)});
                             return RuntimeError.WrongType;
                         },
+
+                        .ref => {
+                            try std.io.getStdErr().writer().print("Runtime error: wrong type, expected integer, got {s}.\n", .{@tagName(value.ref.kind)});
+                            return RuntimeError.WrongType;
+                        },
                     }
                 },
 
@@ -103,6 +121,14 @@ pub const VirtualMachine = struct {
 
                 .Divide => {
                     try self.binaryOperation(.Divide);
+                },
+
+                .Greater => {
+                    try self.binaryOperation(.Greater);
+                },
+
+                .Less => {
+                    try self.binaryOperation(.Less);
                 },
 
                 .Pop => {
@@ -160,6 +186,8 @@ pub const VirtualMachine = struct {
         Subtract,
         Multiply,
         Divide,
+        Greater,
+        Less,
     };
 
     fn binaryOperation(self: *Self, op: BinaryOperation) !void {
@@ -174,18 +202,20 @@ pub const VirtualMachine = struct {
             try std.io.getStdErr().writer().print("Runtime error: wrong type, expected integer, got {s}.\n", .{@tagName(b)});
         }
 
-        var c: isize = undefined;
         switch (op) {
             .Add => {
-                c = a.integer + b.integer;
+                const c = a.integer + b.integer;
+                try self.stackPush(.{ .integer = c });
             },
 
             .Subtract => {
-                c = a.integer - b.integer;
+                const c = a.integer - b.integer;
+                try self.stackPush(.{ .integer = c });
             },
 
             .Multiply => {
-                c = a.integer * b.integer;
+                const c = a.integer * b.integer;
+                try self.stackPush(.{ .integer = c });
             },
 
             .Divide => {
@@ -193,11 +223,20 @@ pub const VirtualMachine = struct {
                     return RuntimeError.ZeroDivision;
                 }
 
-                c = @divTrunc(a.integer, b.integer);
+                const c = @divTrunc(a.integer, b.integer);
+                try self.stackPush(.{ .integer = c });
+            },
+
+            .Greater => {
+                const c = a.integer > b.integer;
+                try self.stackPush(.{ .boolean = c });
+            },
+
+            .Less => {
+                const c = a.integer < b.integer;
+                try self.stackPush(.{ .boolean = c });
             },
         }
-
-        try self.stackPush(.{ .integer = c });
     }
 
     fn stackPush(self: *Self, value: Value) !void {
