@@ -20,6 +20,7 @@ from loop_ast import (
     StringLiteral,
     UnaryOp,
     VarDecl,
+    VarExpr,
 )
 
 
@@ -79,10 +80,10 @@ class ModuleCompiler:
                 if expr:
                     self.compile(expr)
                 else:
-                    self.emitter.opcode(Opcode.PushNull)
+                    self.emitter.opcode(Opcode.PushNull, pos)
 
-                self.emitter.long_inst(
-                    StringValue(name.str), pos, LongInst.DefineGlobal
+                self.emitter.add_and_process_constant(
+                    StringValue(name.text), pos, LongInst.DefineGlobal
                 )
 
             case _:
@@ -91,7 +92,9 @@ class ModuleCompiler:
     def compile_expr(self, expr: Expr):
         match expr:
             case IntegerLiteral(pos, num):
-                self.emitter.add_and_push_constant(NumberValue(num), pos)
+                self.emitter.add_and_process_constant(
+                    NumberValue(num), pos, LongInst.PushConstant
+                )
 
             case BoolLiteral(pos, b):
                 if b:
@@ -102,7 +105,14 @@ class ModuleCompiler:
                 self.emitter.opcode(opcode, pos)
 
             case StringLiteral(pos, txt):
-                self.emitter.add_and_push_constant(StringValue(txt), pos)
+                self.emitter.add_and_process_constant(
+                    StringValue(txt), pos, LongInst.PushConstant
+                )
+
+            case VarExpr(pos, name):
+                self.emitter.add_and_process_constant(
+                    StringValue(name.text), pos, LongInst.GetGlobal
+                )
 
             case UnaryOp(pos, op, expr):
                 self.compile(expr)

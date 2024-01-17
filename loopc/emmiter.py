@@ -48,8 +48,8 @@ class Emitter:
         # There is no check for correctness.
 
         if index < 256:
-            self.opcode(lst[0])
-            self.byte(index)
+            self.opcode(lst[0], pos)
+            self.byte(index, pos)
 
     def jump(self, opcode: Opcode, pos: SourcePosition) -> int:
         self.opcode(opcode, pos)

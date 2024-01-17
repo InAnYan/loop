@@ -65,6 +65,10 @@ def token_to_bool(token: Token) -> bool:
     return str(token) == "true"
 
 
+def make_str(token: Token) -> str:
+    return str(token)[1:-1]
+
+
 @v_args(inline=True, meta=True)
 class LarkTreeToLoopAst(Transformer):
     path: str
@@ -121,7 +125,7 @@ class LarkTreeToLoopAst(Transformer):
     FALSE = token_fn(BoolLiteral, token_to_bool)
 
     IDENTIFIER = token_fn(Identifier, str)
-    STRING = token_fn(StringLiteral, str)
+    STRING = token_fn(StringLiteral, make_str)
 
     def NULL(self, token: Token) -> NullLiteral:
         return NullLiteral(self.make_pos(token))

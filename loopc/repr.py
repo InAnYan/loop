@@ -24,6 +24,10 @@ class Opcode(Enum):
     Less = 17
 
     # NEW
+    PushNull = 18
+    DefineGlobal = 19
+    GetGlobal = 20
+    SetGlobal = 21
 
 
 class LongInst(Enum):
@@ -44,7 +48,7 @@ class NumberValue(Value):
     num: int
 
     def make_json_object(self) -> dict:
-        return {"type": "integer", "data": self.num}
+        return {"type": "Integer", "data": self.num}
 
 
 @dataclass
@@ -52,13 +56,13 @@ class BoolValue(Value):
     b: bool
 
     def make_json_object(self) -> dict:
-        return {"type": "bool", "data": self.b}
+        return {"type": "Boolean", "data": self.b}
 
 
 @dataclass
 class NullValue(Value):
     def make_json_object(self) -> dict:
-        return {"type": "null"}
+        return {"type": "Null"}
 
 
 @dataclass
@@ -66,4 +70,4 @@ class StringValue(Value):
     txt: str
 
     def make_json_object(self) -> dict:
-        return {"type": "string", "data": self.txt}
+        return {"type": "String", "data": self.txt}

@@ -4,6 +4,7 @@ const Opcode = @import("instructions.zig").Opcode;
 const Value = @import("value.zig").Value;
 const Instruction = @import("instructions.zig").Instruction;
 const RuntimeError = @import("errors.zig").RuntimeError;
+const StringObject = @import("objects.zig").StringObject;
 
 pub const Chunk = struct {
     code: std.ArrayList(u8),
@@ -136,6 +137,20 @@ pub const Chunk = struct {
                 return .{ .inst = .{ .Less = .{} }, .offset = offset + 1 };
             },
 
+            .PushNull => {
+                return .{ .inst = .{ .PushNull = .{} }, .offset = offset + 1 };
+            },
+
+            .DefineGlobal => {
+                const index = try self.getByte(offset + 1);
+                return .{ .inst = .{ .DefineGlobal = .{ .index = index } }, .offset = offset + 2 };
+            },
+
+            .GetGlobal => {
+                const index = try self.getByte(offset + 1);
+                return .{ .inst = .{ .GetGlobal = .{ .index = index } }, .offset = offset + 2 };
+            },
+
             _ => {
                 return .{ .inst = .{ .Unknown = .{ .opcode = @intFromEnum(opcode) } }, .offset = offset + 1 };
             },
@@ -154,12 +169,23 @@ pub const Chunk = struct {
         return @enumFromInt(try self.getByte(offset));
     }
 
-    pub fn getConstant(self: *const Self, index: u8) !Value {
+    pub fn getConstant(self: *const Self, index: usize) !Value {
         if (index >= self.constants.items.len) {
             return RuntimeError.ConstantDoesNotExists;
         }
 
         return self.constants.items[index];
+    }
+
+    pub fn getStringConstant(self: *const Self, index: usize) !*StringObject {
+        const val = try self.getConstant(index);
+
+        if (val == .Object and val.Object.kind == .String) {
+            return val.Object.as(StringObject);
+        } else {
+            // Actually, if the compiler is correct, then this error will never be raised.
+            return RuntimeError.WrongType;
+        }
     }
 
     pub fn getLine(self: *const Self, offset: usize) !?usize {
