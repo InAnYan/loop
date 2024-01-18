@@ -16,6 +16,7 @@ from loop_ast import (
     Expr,
     ExprStmt,
     Identifier,
+    IfStmt,
     IntegerLiteral,
     Module,
     NullLiteral,
@@ -123,6 +124,7 @@ class LarkTreeToLoopAst(Transformer):
     print_stmt = tree(PrintStmt)
     expr_stmt = tree(ExprStmt)
     var_decl = tree(VarDecl)
+    if_stmt = tree(IfStmt)
 
     # Expressions.
 

@@ -1,6 +1,6 @@
 const Chunk = @import("chunk.zig").Chunk;
 
-pub const Opcode = enum(u8) { Return = 0, PushConstant, Negate, Add, Subtract, Multiply, Divide, Print, Pop, Plus, Equal, Not, JumpIfFalse, JumpIfTrue, PushTrue, PushFalse, Greater, Less, PushNull, DefineGlobal, GetGlobal, SetGlobal, GetLocal, SetLocal, _ };
+pub const Opcode = enum(u8) { Return = 0, PushConstant, Negate, Add, Subtract, Multiply, Divide, Print, Pop, Plus, Equal, Not, JumpIfFalse, JumpIfTrue, PushTrue, PushFalse, Greater, Less, PushNull, DefineGlobal, GetGlobal, SetGlobal, GetLocal, SetLocal, JumpIfFalsePop, Jump, _ };
 
 pub const SimpleInstruction = struct {
     const Self = @This();
@@ -94,6 +94,8 @@ pub const Instruction = union(enum) {
     SetGlobal: ConstantInstruction,
     GetLocal: ByteInstruction,
     SetLocal: ByteInstruction,
+    JumpIfFalsePop: JumpInstruction,
+    Jump: JumpInstruction,
 
     const Self = @This();
 
@@ -206,6 +208,14 @@ pub const Instruction = union(enum) {
 
             .SetLocal => {
                 try self.SetLocal.disassemble(writer, chunk, "SetLocal", offset);
+            },
+
+            .JumpIfFalsePop => {
+                try self.JumpIfFalsePop.disassemble(writer, chunk, "JumpIfFalsePop", offset);
+            },
+
+            .Jump => {
+                try self.Jump.disassemble(writer, chunk, "Jump", offset);
             },
         }
     }

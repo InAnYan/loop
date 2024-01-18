@@ -28,6 +28,8 @@ class Opcode(Enum):
     SetGlobal = 21
     GetLocal = 22
     SetLocal = 23
+    JumpIfFalsePop = 24
+    Jump = 25
 
 
 class LongInst(Enum):

@@ -104,20 +104,12 @@ pub const Chunk = struct {
             },
 
             .JumpIfFalse => {
-                const part_1 = try self.getByte(offset + 1);
-                const part_2 = try self.getByte(offset + 2);
-
-                const arg = @shlExact(@as(u16, part_2), 8) | part_1;
-
+                const arg = try self.extractJumpArg(offset + 1);
                 return .{ .inst = .{ .JumpIfFalse = .{ .jump = arg } }, .offset = offset + 3 };
             },
 
             .JumpIfTrue => {
-                const part_1 = try self.getByte(offset + 1);
-                const part_2 = try self.getByte(offset + 2);
-
-                const arg = @shlExact(@as(u16, part_2), 8) | part_1;
-
+                const arg = try self.extractJumpArg(offset + 1);
                 return .{ .inst = .{ .JumpIfTrue = .{ .jump = arg } }, .offset = offset + 3 };
             },
 
@@ -166,10 +158,28 @@ pub const Chunk = struct {
                 return .{ .inst = .{ .SetLocal = .{ .byte = byte } }, .offset = offset + 2 };
             },
 
+            .JumpIfFalsePop => {
+                const arg = try self.extractJumpArg(offset + 1);
+                return .{ .inst = .{ .JumpIfFalsePop = .{ .jump = arg } }, .offset = offset + 3 };
+            },
+
+            .Jump => {
+                const arg = try self.extractJumpArg(offset + 1);
+                return .{ .inst = .{ .Jump = .{ .jump = arg } }, .offset = offset + 3 };
+            },
+
             _ => {
                 return .{ .inst = .{ .Unknown = .{ .opcode = @intFromEnum(opcode) } }, .offset = offset + 1 };
             },
         }
+    }
+
+    fn extractJumpArg(self: *const Self, offset: usize) !u16 {
+        const part_1 = try self.getByte(offset);
+        const part_2 = try self.getByte(offset + 1);
+
+        const arg = @shlExact(@as(u16, part_2), 8) | part_1;
+        return arg;
     }
 
     pub fn getByte(self: *const Self, offset: usize) !u8 {

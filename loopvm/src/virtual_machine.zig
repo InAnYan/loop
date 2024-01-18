@@ -104,6 +104,7 @@ pub const VirtualMachine = struct {
                 },
 
                 .Add => {
+                    // TODO: String concatenation.
                     try self.binaryOperation(.Add);
                 },
 
@@ -166,7 +167,7 @@ pub const VirtualMachine = struct {
                 },
 
                 .PushFalse => {
-                    try self.stackPush(.{ .Boolean = true });
+                    try self.stackPush(.{ .Boolean = false });
                 },
 
                 .PushNull => {
@@ -212,6 +213,18 @@ pub const VirtualMachine = struct {
                 .SetLocal => {
                     const val = try self.stackPeek();
                     try self.stackReplace(inst.SetLocal.byte, val);
+                },
+
+                .JumpIfFalsePop => {
+                    const val = try self.stackPop();
+
+                    if (val.isFalse()) {
+                        frame.ip += inst.JumpIfFalsePop.jump;
+                    }
+                },
+
+                .Jump => {
+                    frame.ip += inst.Jump.jump;
                 },
 
                 .Unknown => {

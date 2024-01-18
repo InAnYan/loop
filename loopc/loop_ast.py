@@ -176,6 +176,13 @@ class BlockStmt(Stmt):
 
 
 @dataclass
+class IfStmt(Stmt):
+    condition: Expr
+    then_arm: BlockStmt
+    else_arm: Optional[BlockStmt] = None
+
+
+@dataclass
 class Module:
     path: str
     stmts: List[Stmt]

@@ -1,11 +1,7 @@
-var global = 15;
-{
-    print global;
-    var c = 4;
-    {
-        var c = 7;
-        c = 9;
-        print c;
-    }
-    print c;
+if (false) {
+    print "NOO";
+} else {
+    var a = 10;
+    print "YES";
+    print a;
 }

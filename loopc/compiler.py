@@ -15,6 +15,7 @@ from loop_ast import (
     Expr,
     ExprStmt,
     Identifier,
+    IfStmt,
     IntegerLiteral,
     Module,
     NullLiteral,
@@ -88,6 +89,19 @@ class ModuleCompiler(AstVisitor):
 
         self.end_scope(stmt.pos)  # TODO: Wrong pos for BlockStmt compile.
 
+    def visit_IfStmt(self, stmt: IfStmt):
+        self.compile(stmt.condition)
+        false_jump = self.emitter.jump(Opcode.JumpIfFalsePop, stmt.pos)
+
+        self.compile(stmt.then_arm)
+        then_jump = self.emitter.jump(Opcode.Jump, stmt.pos)
+
+        self.emitter.patch_jump(false_jump, stmt.pos)
+        if stmt.else_arm:
+            self.compile(stmt.else_arm)
+
+        self.emitter.patch_jump(then_jump, stmt.pos)
+
     def visit_IntegerLiteral(self, expr: IntegerLiteral):
         self.emitter.add_and_process_constant(
             NumberValue(expr.num), expr.pos, LongInst.PushConstant
@@ -103,7 +117,7 @@ class ModuleCompiler(AstVisitor):
 
     def visit_StringLiteral(self, expr: StringLiteral):
         self.emitter.add_and_process_constant(
-            StringValue(expr.txt), expr.pos, LongInst.PushConstant
+            StringValue(expr.text), expr.pos, LongInst.PushConstant
         )
 
     def visit_NullLiteral(self, expr: NullLiteral):
