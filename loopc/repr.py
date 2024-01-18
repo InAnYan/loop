@@ -26,6 +26,8 @@ class Opcode(Enum):
     DefineGlobal = 19
     GetGlobal = 20
     SetGlobal = 21
+    GetLocal = 22
+    SetLocal = 23
 
 
 class LongInst(Enum):

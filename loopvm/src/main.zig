@@ -8,7 +8,7 @@ const Value = @import("value.zig").Value;
 const Instruction = @import("instructions.zig").Instruction;
 const RuntimeError = @import("errors.zig").RuntimeError;
 
-pub fn main() !void {
+pub fn main() !u8 {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer {
         const deinit_status = gpa.deinit();
@@ -55,5 +55,10 @@ pub fn main() !void {
 
     try chunk.disassemble(std.io.getStdOut().writer(), "test chunk");
 
-    try vm.run(&chunk);
+    const res = try vm.run(&chunk);
+    if (res == .Integer) {
+        return @intCast(res.Integer);
+    } else {
+        return 0;
+    }
 }

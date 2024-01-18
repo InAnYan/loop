@@ -1,6 +1,6 @@
 const Chunk = @import("chunk.zig").Chunk;
 
-pub const Opcode = enum(u8) { Return = 0, PushConstant, Negate, Add, Subtract, Multiply, Divide, Print, Pop, Plus, Equal, Not, JumpIfFalse, JumpIfTrue, PushTrue, PushFalse, Greater, Less, PushNull, DefineGlobal, GetGlobal, SetGlobal, _ };
+pub const Opcode = enum(u8) { Return = 0, PushConstant, Negate, Add, Subtract, Multiply, Divide, Print, Pop, Plus, Equal, Not, JumpIfFalse, JumpIfTrue, PushTrue, PushFalse, Greater, Less, PushNull, DefineGlobal, GetGlobal, SetGlobal, GetLocal, SetLocal, _ };
 
 pub const SimpleInstruction = struct {
     const Self = @This();
@@ -43,6 +43,18 @@ pub const JumpInstruction = struct {
     }
 };
 
+pub const ByteInstruction = struct {
+    byte: u8,
+
+    const Self = @This();
+
+    pub fn disassemble(self: *const Self, writer: anytype, chunk: *const Chunk, name: []const u8, offset: usize) !void {
+        _ = offset;
+        _ = chunk;
+        try writer.print("{s:<16} {d:4}\n", .{ name, self.byte });
+    }
+};
+
 pub const UnknownInstruction = struct {
     opcode: u8,
 
@@ -80,6 +92,8 @@ pub const Instruction = union(enum) {
     DefineGlobal: ConstantInstruction,
     GetGlobal: ConstantInstruction,
     SetGlobal: ConstantInstruction,
+    GetLocal: ByteInstruction,
+    SetLocal: ByteInstruction,
 
     const Self = @This();
 
@@ -184,6 +198,14 @@ pub const Instruction = union(enum) {
 
             .SetGlobal => {
                 try self.SetGlobal.disassemble(writer, chunk, "SetGlobal", offset);
+            },
+
+            .GetLocal => {
+                try self.GetLocal.disassemble(writer, chunk, "GetLocal", offset);
+            },
+
+            .SetLocal => {
+                try self.SetLocal.disassemble(writer, chunk, "SetLocal", offset);
             },
         }
     }

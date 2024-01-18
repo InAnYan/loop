@@ -67,12 +67,12 @@ pub const VirtualMachine = struct {
         return self.memory_manager.allocator();
     }
 
-    pub fn run(self: *Self, chunk: *Chunk) !void {
+    pub fn run(self: *Self, chunk: *Chunk) !Value {
         try self.call_frames.append(.{ .chunk = chunk, .ip = 0 });
-        try self.runCycles();
+        return try self.runCycles();
     }
 
-    fn runCycles(self: *Self) !void {
+    fn runCycles(self: *Self) !Value {
         while (true) {
             var frame = &self.call_frames.items[self.call_frames.items.len - 1];
 
@@ -85,7 +85,7 @@ pub const VirtualMachine = struct {
             const inst = try frame.readInstruction();
             switch (inst) {
                 .Return => {
-                    break;
+                    return try self.stackPop();
                 },
 
                 .PushConstant => {
@@ -204,6 +204,16 @@ pub const VirtualMachine = struct {
                     }
                 },
 
+                .GetLocal => {
+                    const val = try self.stackPeekIndex(inst.GetLocal.byte);
+                    try self.stackPush(val);
+                },
+
+                .SetLocal => {
+                    const val = try self.stackPeek();
+                    try self.stackReplace(inst.SetLocal.byte, val);
+                },
+
                 .Unknown => {
                     try std.io.getStdErr().writer().print("Runtime error: unknown opcode 0x{x}.\n", .{inst.Unknown.opcode});
                     return RuntimeError.UnknownOpcode;
@@ -306,6 +316,22 @@ pub const VirtualMachine = struct {
         }
 
         return self.stack.getLast();
+    }
+
+    fn stackPeekIndex(self: *Self, index: usize) !Value {
+        if (index >= self.stack.items.len) {
+            return RuntimeError.WrongStackIndex;
+        }
+
+        return self.stack.items[index];
+    }
+
+    fn stackReplace(self: *Self, index: usize, value: Value) !void {
+        if (index >= self.stack.items.len) {
+            return RuntimeError.WrongStackIndex;
+        }
+
+        self.stack.items[index] = value;
     }
 
     fn traceStack(self: *const Self) !void {

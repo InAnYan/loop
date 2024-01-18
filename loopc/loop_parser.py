@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Callable, List, Optional
 import os
 from lark.lark import Lark
-from lark import v_args
+from lark import UnexpectedToken, v_args
 from lark.visitors import Transformer
 from lark.lexer import Token
 from lark.tree import Meta
@@ -11,6 +11,7 @@ from loop_ast import (
     Assignment,
     BinaryOp,
     BinaryOpType,
+    BlockStmt,
     BoolLiteral,
     Expr,
     ExprStmt,
@@ -27,16 +28,39 @@ from loop_ast import (
     VarDecl,
     VarExpr,
 )
+from error_listener import ErrorListener
+
 
 dirname = os.path.dirname(__file__)
 GRAMMAR_PATH = os.path.join(dirname, "grammar.lark")
 
 
-def parse_loop_module(path: str, source: str) -> Module:
+def parse_loop_module(
+    error_listener: ErrorListener, path: str, source: str
+) -> Optional[Module]:
+    had_error = False
+
+    def handle_error(error: UnexpectedToken) -> bool:
+        nonlocal had_error, error_listener, path
+
+        had_error = True
+
+        error_listener.error(
+            SourcePosition(path, error.line), f"unexpected token {error.token}"
+        )
+
+        # TODO: Add synchronization.
+
+        return True
+
     with open(GRAMMAR_PATH) as grammar_file:
         grammar = grammar_file.read()
         lark = Lark(grammar, parser="lalr", start="module", propagate_positions=True)
-        tree = lark.parse(source)
+        tree = lark.parse(source, on_error=handle_error)
+
+        if had_error:
+            return None
+
         transformer = LarkTreeToLoopAst(path)
         return transformer.transform(tree)
 
@@ -92,6 +116,9 @@ class LarkTreeToLoopAst(Transformer):
 
     def module(self, _meta: Meta, *stmts: List[Stmt]) -> Module:
         return Module(self.path, stmts)
+
+    def block_stmt(self, meta: Meta, *stmts: List[Stmt]) -> BlockStmt:
+        return BlockStmt(self.make_pos(meta), stmts)
 
     print_stmt = tree(PrintStmt)
     expr_stmt = tree(ExprStmt)

@@ -1,4 +1,11 @@
-var a = null;
-print a;
-a = 5;
-print a;
+var global = 15;
+{
+    print global;
+    var c = 4;
+    {
+        var c = 7;
+        c = 9;
+        print c;
+    }
+    print c;
+}

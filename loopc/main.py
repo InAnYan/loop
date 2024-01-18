@@ -20,9 +20,11 @@ def main():
 
     with open(in_path) as fin:
         source = fin.read()
-        module = parse_loop_module(in_path, source)
-        compiler = ModuleCompiler(error_listener, module)
-        res = compiler.compile_module()
+        module = parse_loop_module(error_listener, in_path, source)
+        if not module:
+            return
+        compiler = ModuleCompiler(error_listener)
+        res = compiler.compile(module)
         if res:
             with open(out_path, "w") as fout:
                 fout.write(json.dumps(res))

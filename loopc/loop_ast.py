@@ -22,6 +22,18 @@ class AstNode:
     pos: SourcePosition
 
 
+class AstVisitor:
+    def visit(self, node: AstNode):
+        node_name = type(node).__name__
+        fn = getattr(self, "visit_" + node_name, None)
+        if fn:
+            return fn(node)
+        else:
+            raise Exception(
+                f"Unhandled visiting of {node_name} in {type(self).__name__}"
+            )
+
+
 @dataclass
 class Expr(AstNode):
     pass
@@ -156,6 +168,11 @@ class ExprStmt(Stmt):
 class VarDecl(Stmt):
     name: Identifier
     expr: Optional[Expr] = None
+
+
+@dataclass
+class BlockStmt(Stmt):
+    stmts: List[Stmt]
 
 
 @dataclass

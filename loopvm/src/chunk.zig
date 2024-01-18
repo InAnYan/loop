@@ -156,6 +156,16 @@ pub const Chunk = struct {
                 return .{ .inst = .{ .SetGlobal = .{ .index = index } }, .offset = offset + 2 };
             },
 
+            .GetLocal => {
+                const byte = try self.getByte(offset + 1);
+                return .{ .inst = .{ .GetLocal = .{ .byte = byte } }, .offset = offset + 2 };
+            },
+
+            .SetLocal => {
+                const byte = try self.getByte(offset + 1);
+                return .{ .inst = .{ .SetLocal = .{ .byte = byte } }, .offset = offset + 2 };
+            },
+
             _ => {
                 return .{ .inst = .{ .Unknown = .{ .opcode = @intFromEnum(opcode) } }, .offset = offset + 1 };
             },
