@@ -168,6 +168,11 @@ pub const Chunk = struct {
                 return .{ .inst = .{ .Jump = .{ .jump = arg } }, .offset = offset + 3 };
             },
 
+            .Loop => {
+                const arg = try self.extractJumpArg(offset + 1);
+                return .{ .inst = .{ .Loop = .{ .jump = arg } }, .offset = offset + 3 };
+            },
+
             _ => {
                 return .{ .inst = .{ .Unknown = .{ .opcode = @intFromEnum(opcode) } }, .offset = offset + 1 };
             },

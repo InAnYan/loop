@@ -28,6 +28,7 @@ from loop_ast import (
     UnaryOpType,
     VarDecl,
     VarExpr,
+    WhileStmt,
 )
 from error_listener import ErrorListener
 
@@ -125,6 +126,7 @@ class LarkTreeToLoopAst(Transformer):
     expr_stmt = tree(ExprStmt)
     var_decl = tree(VarDecl)
     if_stmt = tree(IfStmt)
+    while_stmt = tree(WhileStmt)
 
     # Expressions.
 

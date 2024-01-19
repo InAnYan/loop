@@ -227,6 +227,10 @@ pub const VirtualMachine = struct {
                     frame.ip += inst.Jump.jump;
                 },
 
+                .Loop => {
+                    frame.ip -= inst.Loop.jump;
+                },
+
                 .Unknown => {
                     try std.io.getStdErr().writer().print("Runtime error: unknown opcode 0x{x}.\n", .{inst.Unknown.opcode});
                     return RuntimeError.UnknownOpcode;

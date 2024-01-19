@@ -26,6 +26,7 @@ from loop_ast import (
     UnaryOp,
     VarDecl,
     VarExpr,
+    WhileStmt,
 )
 
 
@@ -101,6 +102,14 @@ class ModuleCompiler(AstVisitor):
             self.compile(stmt.else_arm)
 
         self.emitter.patch_jump(then_jump, stmt.pos)
+
+    def visit_WhileStmt(self, stmt: WhileStmt):
+        condition = self.emitter.get_pos()
+        self.compile(stmt.condition)
+        exit_jump = self.emitter.jump(Opcode.JumpIfFalsePop, stmt.pos)
+        self.compile(stmt.block)
+        self.emitter.loop(condition, stmt.pos)
+        self.emitter.patch_jump(exit_jump, stmt.pos)
 
     def visit_IntegerLiteral(self, expr: IntegerLiteral):
         self.emitter.add_and_process_constant(
@@ -202,7 +211,7 @@ class ModuleCompiler(AstVisitor):
                 return
 
         self.emitter.add_and_process_constant(
-            StringValue(name.str), name.pos, LongInst.GetGlobal
+            StringValue(name.text), name.pos, LongInst.SetGlobal
         )
 
     def new_local(self, name: Identifier):

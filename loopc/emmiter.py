@@ -17,6 +17,9 @@ class Emitter:
         self.constants = []
         self.lines = []
 
+    def get_pos(self) -> int:
+        return len(self.code)
+
     def opcode(self, opcode: Opcode, pos: SourcePosition):
         self.byte(opcode.value, pos)
 
@@ -57,6 +60,16 @@ class Emitter:
         self.byte(0xFF, pos)
 
         return len(self.code) - 3
+
+    def loop(self, index: int, pos: SourcePosition):
+        # TODO: Generalize with patch_jump?
+        jump = len(self.code) - index + 3
+        if jump > 0xFFFF:
+            self.error_listener.error(pos, "jump is too far")
+
+        self.opcode(Opcode.Loop, pos)
+        self.byte(jump & 0xFF, pos)
+        self.byte((jump >> 8) & 0xFF, pos)
 
     def patch_jump(self, index: int, pos: SourcePosition):
         assert index < len(self.code)

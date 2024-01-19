@@ -183,6 +183,12 @@ class IfStmt(Stmt):
 
 
 @dataclass
+class WhileStmt(Stmt):
+    condition: Expr
+    block: BlockStmt
+
+
+@dataclass
 class Module:
     path: str
     stmts: List[Stmt]

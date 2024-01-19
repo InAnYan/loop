@@ -1,7 +1,5 @@
-if (false) {
-    print "NOO";
-} else {
-    var a = 10;
-    print "YES";
+var a = 5;
+while (a > 0) {
     print a;
+    a = a - 1;
 }

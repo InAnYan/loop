@@ -30,6 +30,7 @@ class Opcode(Enum):
     SetLocal = 23
     JumpIfFalsePop = 24
     Jump = 25
+    Loop = 26
 
 
 class LongInst(Enum):

@@ -1,6 +1,6 @@
 const Chunk = @import("chunk.zig").Chunk;
 
-pub const Opcode = enum(u8) { Return = 0, PushConstant, Negate, Add, Subtract, Multiply, Divide, Print, Pop, Plus, Equal, Not, JumpIfFalse, JumpIfTrue, PushTrue, PushFalse, Greater, Less, PushNull, DefineGlobal, GetGlobal, SetGlobal, GetLocal, SetLocal, JumpIfFalsePop, Jump, _ };
+pub const Opcode = enum(u8) { Return = 0, PushConstant, Negate, Add, Subtract, Multiply, Divide, Print, Pop, Plus, Equal, Not, JumpIfFalse, JumpIfTrue, PushTrue, PushFalse, Greater, Less, PushNull, DefineGlobal, GetGlobal, SetGlobal, GetLocal, SetLocal, JumpIfFalsePop, Jump, Loop, _ };
 
 pub const SimpleInstruction = struct {
     const Self = @This();
@@ -55,6 +55,19 @@ pub const ByteInstruction = struct {
     }
 };
 
+pub const LoopInstruction = struct {
+    jump: u16,
+
+    const Self = @This();
+
+    pub fn disassemble(self: *const Self, writer: anytype, chunk: *const Chunk, name: []const u8, offset: usize) !void {
+        _ = chunk;
+
+        const new_ip = offset - self.jump + 3;
+        try writer.print("{s:<16} {d:4}\n", .{ name, new_ip });
+    }
+};
+
 pub const UnknownInstruction = struct {
     opcode: u8,
 
@@ -96,6 +109,7 @@ pub const Instruction = union(enum) {
     SetLocal: ByteInstruction,
     JumpIfFalsePop: JumpInstruction,
     Jump: JumpInstruction,
+    Loop: LoopInstruction,
 
     const Self = @This();
 
@@ -216,6 +230,10 @@ pub const Instruction = union(enum) {
 
             .Jump => {
                 try self.Jump.disassemble(writer, chunk, "Jump", offset);
+            },
+
+            .Loop => {
+                try self.Loop.disassemble(writer, chunk, "Loop", offset);
             },
         }
     }
