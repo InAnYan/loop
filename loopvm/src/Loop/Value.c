@@ -26,9 +26,9 @@ Value ValueFromJSON(VirtualMachine* vm, const cJSON* json)
 
     const char* type_string = type->valuestring;
 
-    if (strcmp(type_string, "Integer"))
+    if (strcmp(type_string, "Integer") == 0)
     {
-        const cJSON* value = cJSON_GetObjectItemCaseSensitive(json, "value");
+        const cJSON* value = cJSON_GetObjectItemCaseSensitive(json, "data");
         assert(cJSON_IsNumber(value));
 
         return ValueInt(value->valueint);
@@ -145,6 +145,29 @@ bool ValueAreEqual(Value a, Value b)
         return ValueAsInt(a) == ValueAsInt(b);
     case ValueType_Object:
         return ValueAsObject(a) == ValueAsObject(b);
+    }
+}
+
+size_t ValueHash(Value self)
+{
+    switch (ValueGetType(self))
+    {
+    case ValueType_Null:
+        assert(false && "Null cannot be hashed");
+    case ValueType_Bool:
+        return ValueAsBool(self) ? 1 : 0;
+    case ValueType_Int:
+        return ValueAsInt(self);
+    case ValueType_Object:
+    {
+        Object* obj = ValueAsObject(self);
+        if (!ObjectIsString(obj))
+        {
+            assert(false && "Only strings can be hashed");
+        }
+
+        return ObjectAsString(obj)->hash;
+    }
     }
 }
 

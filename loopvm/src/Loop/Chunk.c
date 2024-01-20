@@ -62,6 +62,10 @@ void ChunkFromJSON(Chunk* self, VirtualMachine* vm, const cJSON* json)
         assert(cJSON_IsNumber(line));
         PushLine(self, vm, line->valueint);
     }
+
+    #ifdef DISASM_CHUNKS_AFTER_READING
+    ChunkDisassemble(self, vm->conf.debug_out, "<json>");
+    #endif
 }
 
 // Oh, no. Code duplication.
@@ -128,7 +132,7 @@ void ChunkDisassemble(const Chunk* self, FILE* out, const char* name)
     fprintf(out, "=== %s ===\n", name);
 
     for (const uint8_t* ptr = self->code;
-         ptr != self->code + self->code_capacity;
+         ptr != self->code + self->code_length;
          ptr = ChunkDisassembleInstruction(self, out, ptr));
 }
 
@@ -145,7 +149,7 @@ const uint8_t* ChunkDisassembleInstruction(const Chunk* self, FILE* out, const u
 
     fprintf(out, "%04ld ", offset_num);
 
-    if (offset_num != 0 && ChunkGetLine(self, offset_num - 1) == ChunkGetLine(self, offset_num))
+    if (offset_num != 0 && ChunkGetLine(self, offset_num - 1) == ChunkGetLine(self, offset_num)) // Bad algorithm.
     {
         fprintf(out, "   | ");
     }
@@ -182,9 +186,9 @@ const uint8_t* DisassembleConstant(const Chunk* self, FILE* out, const uint8_t* 
     uint8_t index = offset[1];
     Value value = self->constants[index];
 
-    fprintf(out, "%-16s %4d '", name, index);
+    fprintf(out, "%-16s %4d ", name, index);
     ValuePrint(value, out, PrintFlags_Debug);
-    fprintf(out, "'\n");
+    fprintf(out, "\n");
 
     return offset + 2;
 }

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import List
+from typing import Any, Dict, List
 
 
 class Opcode(Enum):
@@ -44,7 +44,7 @@ class LongInst(Enum):
 
 class Value(ABC):
     @abstractmethod
-    def make_json_object(self) -> dict:
+    def make_json_object(self) -> Dict[str, Any]:
         raise NotImplemented()
 
 
@@ -54,7 +54,7 @@ class Chunk:
     constants: List[Value]
     lines: List[int]
 
-    def make_json_object(self) -> dict:
+    def make_json_object(self) -> Dict[str, Any]:
         return {
             "code": self.code,
             "constants": list(map(lambda v: v.make_json_object(), self.constants)),
@@ -66,7 +66,7 @@ class Chunk:
 class NumberValue(Value):
     num: int
 
-    def make_json_object(self) -> dict:
+    def make_json_object(self) -> Dict[str, Any]:
         return {"type": "Integer", "data": self.num}
 
 
@@ -74,13 +74,13 @@ class NumberValue(Value):
 class BoolValue(Value):
     b: bool
 
-    def make_json_object(self) -> dict:
+    def make_json_object(self) -> Dict[str, Any]:
         return {"type": "Boolean", "data": self.b}
 
 
 @dataclass
 class NullValue(Value):
-    def make_json_object(self) -> dict:
+    def make_json_object(self) -> Dict[str, Any]:
         return {"type": "Null"}
 
 
@@ -88,7 +88,7 @@ class NullValue(Value):
 class StringValue(Value):
     txt: str
 
-    def make_json_object(self) -> dict:
+    def make_json_object(self) -> Dict[str, Any]:
         return {"type": "String", "data": self.txt}
 
 
@@ -98,9 +98,15 @@ class FunctionValue(Value):
     arity: int
     body: Chunk
 
-    def make_json_object(self) -> dict:
+    def make_json_object(self) -> Dict[str, Any]:
         return {
             "type": "Function",
+            "data": self.make_json_object_data(),
+        }
+
+    def make_json_object_data(self) -> dict:
+        return {
             "name": self.name,
-            "body": self.body.make_json_object(),
+            "arity": self.arity,
+            "chunk": self.body.make_json_object(),
         }

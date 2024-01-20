@@ -39,24 +39,30 @@ static Value ReadConstant(CallFrame* frame);
 static void TraceStack(VirtualMachine* self);
 
 static Error BinOp(VirtualMachine* self, Opcode opcode);
-static bool Call(VirtualMachine* self, Value function, uint8_t arity);
+static Error Call(VirtualMachine* self, Value value, uint8_t arity);
 
 static Value Run(VirtualMachine* self);
 
 Value VirtualMachineRunScript(VirtualMachine* self, ObjectFunction* script)
 {
     ResetState(self);
-    assert(PushFrame(self, script));
+
     StackPush(self, ValueObject((Object*)script));
+
+    CallFrame* frame = self->frame_ptr++;
+    frame->function = script;
+    frame->ip = script->chunk.code;
+    frame->locals = self->stack_ptr;
+
     return Run(self);
 }
 
 Value Run(VirtualMachine* self)
 {
-    CallFrame* frame = &self->frame_ptr[-1];
-
     while (true)
     {
+        CallFrame* frame = &self->frame_ptr[-1];
+
         #ifdef VM_TRACE_EXECUTION
 
         TraceStack(self);
@@ -190,6 +196,7 @@ Value Run(VirtualMachine* self)
         {
             Value value = StackPop(self);
             ValuePrint(value, self->conf.user_out, PrintFlags_Pretty);
+            fprintf(self->conf.user_out, "\n");
             break;
         }
 
@@ -228,13 +235,15 @@ Value Run(VirtualMachine* self)
                 return ValueInt(Error_UndefinedVariable);
             }
 
+            StackPush(self, value);
+
             break;
         }
 
         case Opcode_SetGlobal:
         {
             Value key = ReadConstant(frame);
-            Value value = StackPop(self);
+            Value value = StackPeek(self);
 
             if (HashTablePut(&self->globals, self, key, value))
             {
@@ -243,6 +252,8 @@ Value Run(VirtualMachine* self)
                         ObjectAsString(ValueAsObject(key))->str);
                 return ValueInt(Error_UndefinedVariable);
             }
+
+            break;
         }
 
         case Opcode_GetLocal:
@@ -309,7 +320,7 @@ static bool PushFrame(VirtualMachine* self, ObjectFunction* function)
     CallFrame* frame = self->frame_ptr++;
     frame->function = function;
     frame->ip = function->chunk.code;
-    frame->locals = self->stack_ptr;
+    frame->locals = self->stack_ptr - function->arity - 1;
 
     return true;
 }
@@ -322,6 +333,8 @@ static bool PopFrame(VirtualMachine* self)
     }
 
     --self->frame_ptr;
+    self->stack_ptr = self->frame_ptr->locals;
+
     return true;
 }
 
@@ -431,10 +444,10 @@ static Error BinOp(VirtualMachine* self, Opcode opcode)
         StackPush(self, ValueInt(lhs + rhs));
         break;
     case Opcode_Subtract:
-        StackPush(self, ValueInt(lhs + rhs));
+        StackPush(self, ValueInt(lhs - rhs));
         break;
     case Opcode_Multiply:
-        StackPush(self, ValueInt(lhs + rhs));
+        StackPush(self, ValueInt(lhs * rhs));
         break;
     case Opcode_Divide:
         if (rhs == 0)
@@ -442,7 +455,7 @@ static Error BinOp(VirtualMachine* self, Opcode opcode)
             fprintf(self->conf.user_err, "error: zero division\n");
             return Error_ZeroDivision;
         }
-        StackPush(self, ValueInt(lhs + rhs));
+        StackPush(self, ValueInt(lhs / rhs));
         break;
     case Opcode_Greater:
         StackPush(self, ValueBool(lhs > rhs));
@@ -457,7 +470,42 @@ static Error BinOp(VirtualMachine* self, Opcode opcode)
     return Error_None;
 }
 
-static bool Call(VirtualMachine* self, Value function, uint8_t arity)
+static Error Call(VirtualMachine* self, Value value, uint8_t arity)
 {
+    if (!ValueIsObject(value))
+    {
+        fprintf(self->conf.user_err, "error: expected callable, got %s\n",
+                ValueTypeToString(ValueGetType(value)));
+        return Error_NonCallable;
+    }
 
+    Object* obj = ValueAsObject(value);
+    ObjectType obj_type = ObjectGetType(obj);
+
+    switch (obj_type)
+    {
+    case ObjectType_Function:
+    {
+        ObjectFunction* func = ObjectAsFunction(obj);
+
+        if (func->arity != arity)
+        {
+            fprintf(self->conf.user_err, "error: wrong number of arguments, expected %ld, got %d\n",
+                    func->arity, arity);
+            return Error_WrongArgumentsCount;
+        }
+
+        if (!PushFrame(self, func))
+        {
+            return Error_StackOverflow;
+        }
+
+        return Error_None;
+    }
+
+    default:
+        fprintf(self->conf.user_err, "error: expected callable, got %s\n",
+                ObjectTypeToString(obj_type));
+        return Error_NonCallable;
+    }
 }
