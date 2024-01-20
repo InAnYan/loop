@@ -13,8 +13,10 @@ from loop_ast import (
     BinaryOpType,
     BlockStmt,
     BoolLiteral,
+    CallExpr,
     Expr,
     ExprStmt,
+    FuncDecl,
     Identifier,
     IfStmt,
     IntegerLiteral,
@@ -127,6 +129,10 @@ class LarkTreeToLoopAst(Transformer):
     var_decl = tree(VarDecl)
     if_stmt = tree(IfStmt)
     while_stmt = tree(WhileStmt)
+    func_decl = tree(FuncDecl)
+
+    def arg_list(self, _meta: Meta, *args: List[Identifier]) -> List[Identifier]:
+        return args
 
     # Expressions.
 
@@ -153,6 +159,11 @@ class LarkTreeToLoopAst(Transformer):
     logical_not = unary_op(UnaryOpType.Not)
 
     var_expr = tree(VarExpr)
+
+    call = tree(CallExpr)
+
+    def expr_list(self, _meta: Meta, *args: List[Expr]) -> List[Expr]:
+        return args
 
     # Tokens.
 

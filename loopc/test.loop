@@ -1,5 +1,7 @@
-var a = 5;
-while (a > 0) {
-    print a;
-    a = a - 1;
+function print_me(x) {
+    print "Print me called";
+    print x;
 }
+
+print_me(10);
+print_me("asdasdsadA");

@@ -189,6 +189,19 @@ class WhileStmt(Stmt):
 
 
 @dataclass
+class FuncDecl(Stmt):
+    name: Identifier
+    args: List[Identifier]
+    body: BlockStmt
+
+
+@dataclass
+class CallExpr(Expr):
+    callee: Expr
+    args: List[Expr]
+
+
+@dataclass
 class Module:
     path: str
     stmts: List[Stmt]

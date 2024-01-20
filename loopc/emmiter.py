@@ -2,7 +2,7 @@ from typing import List
 from error_listener import ErrorListener
 from loop_ast import SourcePosition
 
-from repr import LongInst, Opcode, Value
+from repr import Chunk, LongInst, Opcode, Value
 
 
 class Emitter:
@@ -89,9 +89,5 @@ class Emitter:
         self.code.append(byte)
         self.lines.append(pos.line)
 
-    def make_json_chunk_object(self) -> dict:
-        return {
-            "code": self.code,
-            "constants": list(map(lambda v: v.make_json_object(), self.constants)),
-            "lines": self.lines,
-        }
+    def make_chunk(self) -> Chunk:
+        return Chunk(self.code, self.constants, self.lines)

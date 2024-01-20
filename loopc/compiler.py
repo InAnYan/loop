@@ -3,7 +3,7 @@ from typing import List, Optional
 from emmiter import Emitter
 from error_listener import ErrorListener
 
-from repr import LongInst, NumberValue, Opcode, StringValue, Value
+from repr import Chunk, FunctionValue, LongInst, NumberValue, Opcode, StringValue, Value
 from loop_ast import (
     Assignment,
     AstNode,
@@ -12,8 +12,10 @@ from loop_ast import (
     BinaryOpType,
     BlockStmt,
     BoolLiteral,
+    CallExpr,
     Expr,
     ExprStmt,
+    FuncDecl,
     Identifier,
     IfStmt,
     IntegerLiteral,
@@ -36,7 +38,7 @@ class Local:
     scope: int
 
 
-class ModuleCompiler(AstVisitor):
+class BaseCompiler(AstVisitor):
     error_listener: ErrorListener
     emitter: Emitter
     scope: int
@@ -51,20 +53,14 @@ class ModuleCompiler(AstVisitor):
     def compile(self, node: AstNode):
         return self.visit(node)
 
-    def visit_Module(self, module: Module) -> Optional[dict]:
+    def visit_Module(self, module: Module):
         for stmt in module.stmts:
             self.compile(stmt)
 
-        if len(module.stmts) != 0:
-            last_pos = module.stmts[-1].pos
-        else:
-            last_pos = SourcePosition(module.path, 1)
+        last_pos = make_last_pos(module.stmts, SourcePosition(module.path, 1))
 
         self.emitter.opcode(Opcode.PushNull, last_pos)
         self.emitter.opcode(Opcode.Return, last_pos)
-
-        if not self.error_listener.had_error:
-            return self.emitter.make_json_chunk_object()
 
     def visit_PrintStmt(self, stmt: PrintStmt):
         self.compile(stmt.expr)
@@ -111,6 +107,12 @@ class ModuleCompiler(AstVisitor):
         self.emitter.loop(condition, stmt.pos)
         self.emitter.patch_jump(exit_jump, stmt.pos)
 
+    def visit_FuncDecl(self, stmt: FuncDecl):
+        comp = FunctionCompiler(self.error_listener)
+        func_val = comp.do(stmt)
+        self.emitter.add_and_process_constant(func_val, stmt.pos, LongInst.PushConstant)
+        self.define_var(stmt.name)
+
     def visit_IntegerLiteral(self, expr: IntegerLiteral):
         self.emitter.add_and_process_constant(
             NumberValue(expr.num), expr.pos, LongInst.PushConstant
@@ -144,6 +146,15 @@ class ModuleCompiler(AstVisitor):
         self.emitter.add_and_process_constant(
             StringValue(expr.name.text), expr.pos, LongInst.GetGlobal
         )
+
+    def visit_CallExpr(self, expr: CallExpr):
+        self.compile(expr.callee)
+
+        for arg in expr.args:
+            self.compile(arg)
+
+        self.emitter.opcode(Opcode.Call, expr.pos)
+        self.emitter.byte(len(expr.args), expr.pos)
 
     def visit_Assignment(self, expr: Assignment):
         if not isinstance(expr.var, VarExpr):
@@ -216,16 +227,60 @@ class ModuleCompiler(AstVisitor):
 
     def new_local(self, name: Identifier):
         # There is semantic check, so no need to check here.
+        # TODO: MAKE SEMANTIC PASS.
         self.locals.append(Local(name, self.scope))
 
     def begin_scope(self):
         self.scope += 1
 
-    def end_scope(self, pos: SourcePosition):
+    def end_scope(self, pos: SourcePosition, pop_locals: bool = True):
         assert self.scope != 0
 
-        while len(self.locals) != 0 and self.locals[-1].scope == self.scope:
+        while (
+            pop_locals and len(self.locals) != 0 and self.locals[-1].scope == self.scope
+        ):
             self.emitter.opcode(Opcode.Pop, pos)
             self.locals.pop()
 
         self.scope -= 1
+
+
+class FunctionCompiler(BaseCompiler):
+    def __init__(self, error_listener: ErrorListener):
+        super().__init__(error_listener)
+
+    def do(self, func: FuncDecl) -> FunctionValue:
+        self.begin_scope()
+
+        for arg in func.args:
+            self.locals.append(Local(arg, self.scope))
+
+        self.compile(func.body)
+
+        last_pos = make_last_pos(func.body.stmts, func.pos)
+
+        # if len(func.body) == 0 or type(func.body[-1]) != ReturnStmt:
+        self.emitter.opcode(Opcode.PushNull, last_pos)
+        self.emitter.opcode(Opcode.Return, last_pos)
+
+        self.end_scope(last_pos, False)
+
+        return FunctionValue(func.name.text, len(func.args), self.emitter.make_chunk())
+
+
+class ModuleCompiler(BaseCompiler):
+    def __init__(self, error_listener: ErrorListener):
+        super().__init__(error_listener)
+
+    def do(self, module: Module) -> Optional[Chunk]:
+        self.compile(module)
+
+        if not self.error_listener.had_error:
+            return self.emitter.make_chunk()
+
+
+def make_last_pos(lst: List[AstNode], default: SourcePosition) -> SourcePosition:
+    if len(lst) == 0:
+        return default
+    else:
+        return lst[-1].pos

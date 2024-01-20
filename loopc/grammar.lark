@@ -12,9 +12,13 @@
 module: decl*
 
 ?decl: var_decl
+     | func_decl
      | stmt
 
 var_decl: "var" IDENTIFIER ["=" expr] _eos
+func_decl: "function" IDENTIFIER "(" arg_list ")" block_stmt
+
+arg_list: [IDENTIFIER ("," IDENTIFIER)*]
 
 ?stmt: print_stmt
      | block_stmt
@@ -64,13 +68,18 @@ _eos: ";"+
       | "!" unary -> logical_not
       | primary
 
-?primary: INT
-        | TRUE
-        | FALSE
-        | NULL
-        | STRING
-        | IDENTIFIER -> var_expr
-        | "(" expr ")"
+?primary: atom
+        | atom "(" expr_list ")" -> call
+
+expr_list: [expr ("," expr)*]
+
+?atom: INT
+     | TRUE
+     | FALSE
+     | NULL
+     | STRING
+     | IDENTIFIER -> var_expr
+     | "(" expr ")"
 
 TRUE: "true"
 FALSE: "false"

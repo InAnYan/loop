@@ -24,10 +24,10 @@ def main():
         if not module:
             return
         compiler = ModuleCompiler(error_listener)
-        res = compiler.compile(module)
+        res = compiler.do(module)
         if res:
             with open(out_path, "w") as fout:
-                fout.write(json.dumps(res))
+                fout.write(json.dumps(res.make_json_object()))
 
 
 class TheErrorListener(ErrorListener):

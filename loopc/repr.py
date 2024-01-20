@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum, auto
+from typing import List
 
 
 class Opcode(Enum):
@@ -31,6 +32,7 @@ class Opcode(Enum):
     JumpIfFalsePop = 24
     Jump = 25
     Loop = 26
+    Call = 27
 
 
 class LongInst(Enum):
@@ -44,6 +46,20 @@ class Value(ABC):
     @abstractmethod
     def make_json_object(self) -> dict:
         raise NotImplemented()
+
+
+@dataclass
+class Chunk:
+    code: List[int]
+    constants: List[Value]
+    lines: List[int]
+
+    def make_json_object(self) -> dict:
+        return {
+            "code": self.code,
+            "constants": list(map(lambda v: v.make_json_object(), self.constants)),
+            "lines": self.lines,
+        }
 
 
 @dataclass
@@ -74,3 +90,17 @@ class StringValue(Value):
 
     def make_json_object(self) -> dict:
         return {"type": "String", "data": self.txt}
+
+
+@dataclass
+class FunctionValue(Value):
+    name: str
+    arity: int
+    body: Chunk
+
+    def make_json_object(self) -> dict:
+        return {
+            "type": "Function",
+            "name": self.name,
+            "body": self.body.make_json_object(),
+        }
