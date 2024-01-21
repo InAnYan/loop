@@ -70,7 +70,7 @@ static void AdjustCapacity(HashTable* self, VirtualMachine* vm, size_t new_capac
         HashTableEntry* entry = &self->entries[i];
         if (!ValueIsNull(entry->key))
         {
-            HashTableEntry* dest = FindEntry(self->entries, self->capacity, entry->key);
+            HashTableEntry* dest = FindEntry(entries, self->capacity, entry->key);
             dest->key = entry->key;
             dest->value = entry->value;
             ++new_count;

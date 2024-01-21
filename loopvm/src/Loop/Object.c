@@ -163,11 +163,12 @@ ObjectModule* ObjectModuleFromJSON(VirtualMachine* vm, ObjectModule* _module, co
 
 void ObjectModuleFree(ObjectModule* self, VirtualMachine* vm)
 {
-    ObjectStringFree(self->name, vm);
-    ObjectStringFree(self->path, vm);
-    ObjectFunctionFree(self->script, vm);
+    self->name = NULL;
+    self->path = NULL;
+    self->script = NULL;
     HashTableDeinit(&self->exports, vm);
     HashTableDeinit(&self->globals, vm);
+    FREE_OBJECT(vm, self, Module);
 }
 
 void ObjectModulePrint(const ObjectModule* self, FILE* out, PrintFlags flags)
@@ -178,15 +179,11 @@ void ObjectModulePrint(const ObjectModule* self, FILE* out, PrintFlags flags)
 ObjectString* ObjectStringNew(VirtualMachine* vm, const char* str, size_t length, size_t hash)
 {
     ObjectString* interned = NULL;
-    printf("INTERNING: %s\n", str);
     if (HashTableGetStringKey(&vm->strings, str, length, hash, &interned))
     {
         MemoryManagerFree(&vm->memory_manager, str, length + 1);
-        printf("-- INTERNED\n");
         return interned;
     }
-
-    printf("-- NEW\n");
 
     ObjectString* obj = ALLOCATE_OBJECT(vm, String);
     obj->str = str;
