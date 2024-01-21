@@ -2,36 +2,21 @@ from __future__ import annotations
 from typing import Callable, List, Optional
 import os
 from lark.lark import Lark
-from lark import UnexpectedToken, v_args
+from lark import (
+    UnexpectedCharacters,
+    UnexpectedEOF,
+    UnexpectedToken,
+    v_args,
+)
 from lark.visitors import Transformer
 from lark.lexer import Token
 from lark.tree import Meta
 
-from loop_ast import (
-    Assignment,
-    BinaryOp,
-    BinaryOpType,
-    BlockStmt,
-    BoolLiteral,
-    CallExpr,
-    Expr,
-    ExprStmt,
-    FuncDecl,
-    Identifier,
-    IfStmt,
-    IntegerLiteral,
-    Module,
-    NullLiteral,
-    PrintStmt,
-    SourcePosition,
-    Stmt,
-    StringLiteral,
-    UnaryOp,
-    UnaryOpType,
-    VarDecl,
-    VarExpr,
-    WhileStmt,
-)
+from loop_ast.base import *
+from loop_ast.expr import *
+from loop_ast.stmt import *
+from loop_ast.module import *
+
 from error_listener import ErrorListener
 
 
@@ -48,7 +33,6 @@ def parse_loop_module(
         nonlocal had_error, error_listener, path
 
         had_error = True
-
         error_listener.error(
             SourcePosition(path, error.line), f"unexpected token {error.token}"
         )
@@ -60,13 +44,20 @@ def parse_loop_module(
     with open(GRAMMAR_PATH) as grammar_file:
         grammar = grammar_file.read()
         lark = Lark(grammar, parser="lalr", start="module", propagate_positions=True)
-        tree = lark.parse(source, on_error=handle_error)
 
-        if had_error:
-            return None
+        # TODO: Try except does not work.
+        try:
+            tree = lark.parse(source, on_error=handle_error)
 
-        transformer = LarkTreeToLoopAst(path)
-        return transformer.transform(tree)
+            if had_error:
+                return None
+
+            transformer = LarkTreeToLoopAst(path)
+            return transformer.transform(tree)
+        except UnexpectedEOF as e:
+            error_listener.error(SourcePosition(path, e.line), "unexpected end of file")
+        except UnexpectedCharacters as e:
+            error_listener.error(SourcePosition(path, e.line), "unexpected characters")
 
 
 def unary_op(op: UnaryOpType) -> Callable[[Expr], UnaryOp]:
@@ -130,6 +121,7 @@ class LarkTreeToLoopAst(Transformer):
     if_stmt = tree(IfStmt)
     while_stmt = tree(WhileStmt)
     func_decl = tree(FuncDecl)
+    return_stmt = tree(ReturnStmt)
 
     def arg_list(self, _meta: Meta, *args: List[Identifier]) -> List[Identifier]:
         return args

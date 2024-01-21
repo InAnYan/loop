@@ -1,35 +1,13 @@
 from dataclasses import dataclass
 from typing import List, Optional
+
 from emmiter import Emitter
 from error_listener import ErrorListener
-
-from repr import Chunk, FunctionValue, LongInst, NumberValue, Opcode, StringValue, Value
-from loop_ast import (
-    Assignment,
-    AstNode,
-    AstVisitor,
-    BinaryOp,
-    BinaryOpType,
-    BlockStmt,
-    BoolLiteral,
-    CallExpr,
-    Expr,
-    ExprStmt,
-    FuncDecl,
-    Identifier,
-    IfStmt,
-    IntegerLiteral,
-    Module,
-    NullLiteral,
-    PrintStmt,
-    SourcePosition,
-    Stmt,
-    StringLiteral,
-    UnaryOp,
-    VarDecl,
-    VarExpr,
-    WhileStmt,
-)
+from repr import *
+from loop_ast.base import *
+from loop_ast.expr import *
+from loop_ast.stmt import *
+from loop_ast.module import *
 
 
 @dataclass
@@ -48,7 +26,7 @@ class BaseCompiler(AstVisitor):
         self.error_listener = error_listener
         self.emitter = Emitter(error_listener)
         self.scope = 0
-        self.locals = []
+        self.locals = [Local(Identifier(SourcePosition("", 0), "this"), 0)]
 
     def compile(self, node: AstNode):
         return self.visit(node)
@@ -77,6 +55,14 @@ class BaseCompiler(AstVisitor):
             self.emitter.opcode(Opcode.PushNull, stmt.pos)
 
         self.define_var(stmt.name)
+
+    def visit_ReturnStmt(self, stmt: ReturnStmt):
+        if stmt.expr:
+            self.compile(stmt.expr)
+        else:
+            self.emitter.opcode(Opcode.PushNull, stmt.pos)
+
+        self.emitter.opcode(Opcode.Return, stmt.pos)
 
     def visit_BlockStmt(self, stmt: BlockStmt):
         self.begin_scope()

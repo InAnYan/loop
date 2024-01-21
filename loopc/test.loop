@@ -1,7 +1,5 @@
-function print_me(x) {
-    print "Print me called";
-    print x;
+function double(x) {
+    return x * 2;
 }
 
-print_me(10);
-print_me("asdasdsadA");
+print double(10);

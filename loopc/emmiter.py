@@ -1,6 +1,6 @@
 from typing import List
 from error_listener import ErrorListener
-from loop_ast import SourcePosition
+from loop_ast.base import SourcePosition
 
 from repr import Chunk, LongInst, Opcode, Value
 
@@ -15,7 +15,7 @@ class Emitter:
         self.error_listener = error_listener
         self.code = []
         self.constants = []
-        self.lines = []
+        self.lines = [0]
 
     def get_pos(self) -> int:
         return len(self.code)
@@ -24,6 +24,10 @@ class Emitter:
         self.byte(opcode.value, pos)
 
     def add_constant(self, value: Value, pos: SourcePosition) -> int:
+        for i, const in enumerate(self.constants):
+            if const == value:
+                return i
+
         self.constants.append(value)
         index = len(self.constants) - 1
 
@@ -87,7 +91,11 @@ class Emitter:
         assert type(byte) == int and byte >= 0 and byte < 256
 
         self.code.append(byte)
-        self.lines.append(pos.line)
+
+        if pos.line == len(self.lines) - 1:
+            self.lines[-1] += 1
+        else:
+            self.lines.append(0)
 
     def make_chunk(self) -> Chunk:
         return Chunk(self.code, self.constants, self.lines)
