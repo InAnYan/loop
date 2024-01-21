@@ -11,13 +11,20 @@ void HashTableInit(HashTable* self)
     self->entries = NULL;
 }
 
+static void AdjustCapacity(HashTable* self, VirtualMachine* vm, size_t new_capacity);
+
+void HashTableInitWithCapacity(HashTable* self, VirtualMachine* vm)
+{
+    HashTableInit(self);
+    AdjustCapacity(self, vm, GROW_CAPACITY(self->capacity));
+}
+
 void HashTableDeinit(HashTable* self, VirtualMachine* vm)
 {
     FREE_ARRAY(vm, self->entries, HashTableEntry, self->capacity);
     HashTableInit(self);
 }
 
-static void AdjustCapacity(HashTable* self, VirtualMachine* vm, size_t new_capacity);
 static HashTableEntry* FindEntry(HashTableEntry* entries, size_t capacity, Value key);
 
 bool HashTablePut(HashTable* self, VirtualMachine* vm, Value key, Value value)
@@ -32,14 +39,13 @@ bool HashTablePut(HashTable* self, VirtualMachine* vm, Value key, Value value)
 
     if (ValueIsNull(entry->key))
     {
-        entry->key = key;
-        entry->value = value;
-
         if (ValueIsNull(entry->value))
         {
             self->count++;
         }
 
+        entry->key = key;
+        entry->value = value;
         return true;
     }
 
@@ -51,7 +57,7 @@ static void AdjustCapacity(HashTable* self, VirtualMachine* vm, size_t new_capac
 {
     HashTableEntry* entries = ALLOC_ARRAY(vm, HashTableEntry, new_capacity);
 
-    for (size_t i = 0; i < self->capacity; ++i)
+    for (size_t i = 0; i < new_capacity; ++i)
     {
         HashTableEntry* entry = &entries[i];
         entry->key = ValueNull();
@@ -133,6 +139,8 @@ bool HashTableGet(HashTable* self, Value key, Value* value)
 
 bool HashTableGetStringKey(HashTable* self, const char* key_str, size_t length, size_t hash, ObjectString** ptr)
 {
+    // TODO: This is bad. Because it is not like hash table lookup. Also for strings interning no need for these checks.
+
     for (size_t i = 0; i < self->capacity; ++i)
     {
         HashTableEntry* entry = &self->entries[i];

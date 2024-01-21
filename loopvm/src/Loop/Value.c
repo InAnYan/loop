@@ -17,7 +17,7 @@ const char* ValueTypeToString(ValueType self)
     }
 }
 
-Value ValueFromJSON(VirtualMachine* vm, const cJSON* json)
+Value ValueFromJSON(VirtualMachine* vm, ObjectModule* module, const cJSON* json)
 {
     assert(cJSON_IsObject(json));
 
@@ -34,7 +34,7 @@ Value ValueFromJSON(VirtualMachine* vm, const cJSON* json)
         return ValueInt(value->valueint);
     }
 
-    return ValueObject(ObjectFromJSON(vm, json));
+    return ValueObject(ObjectFromJSON(vm, module, json));
 }
 
 Value ValueNull()

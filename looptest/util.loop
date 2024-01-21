@@ -1,0 +1,14 @@
+export function printMe(x) {
+    print "HERE:";
+    print x;
+}
+
+function my() {
+    print "NO!";
+}
+
+export function id(a) {
+    return a;
+}
+
+export var someVar = "SOME VAR";

@@ -18,7 +18,7 @@ const char* ObjectTypeToString(ObjectType self)
     }
 }
 
-Object* ObjectFromJSON(VirtualMachine* vm, const cJSON* json)
+Object* ObjectFromJSON(VirtualMachine* vm, ObjectModule* module, const cJSON* json)
 {
     assert(cJSON_IsObject(json));
 
@@ -31,7 +31,7 @@ Object* ObjectFromJSON(VirtualMachine* vm, const cJSON* json)
     #define OBJECT_FROM_JSON(name) \
     if (strcmp(type_string, #name) == 0) \
     { \
-        return (Object*)Object##name##FromJSON(vm, data); \
+        return (Object*)Object##name##FromJSON(vm, module, data); \
     }
 
     ObjectType_LIST(OBJECT_FROM_JSON);
@@ -46,39 +46,37 @@ ObjectType ObjectGetType(const Object* self)
     return self->type;
 }
 
-bool ObjectIsString(const Object* self)
-{
-    return ObjectGetType(self) == ObjectType_String;
-}
+#define OBJECT_IS_IMPL(name) \
+    bool ObjectIs##name(const Object* self) \
+    { \
+        return ObjectGetType(self) == ObjectType_##name; \
+    }
 
-bool ObjectIsFunction(const Object* self)
-{
-    return ObjectGetType(self) == ObjectType_Function;
-}
+ObjectType_LIST(OBJECT_IS_IMPL)
 
-ObjectString* ObjectAsString(Object* self)
-{
-    assert(ObjectIsString(self));
-    return (ObjectString*)self;
-}
+#undef OBJECT_IS_IMPL
 
-const ObjectString* ObjectAsStringConst(const Object* self)
-{
-    assert(ObjectIsString(self));
-    return (const ObjectString*)self;
-}
+#define OBJECT_AS_IMPL(name) \
+    Object##name* ObjectAs##name(Object* self) \
+    { \
+        assert(ObjectIs##name(self)); \
+        return (Object##name*)self; \
+    }
 
-ObjectFunction* ObjectAsFunction(Object* self)
-{
-    assert(ObjectIsFunction(self));
-    return (ObjectFunction*)self;
-}
+ObjectType_LIST(OBJECT_AS_IMPL)
 
-const ObjectFunction* ObjectAsFunctionConst(const Object* self)
-{
-    assert(ObjectIsFunction(self));
-    return (const ObjectFunction*)self;
-}
+#undef OBJECT_AS_IMPL
+
+#define OBJECT_AS_CONST_IMPL(name) \
+    const Object##name* ObjectAs##name##Const(const Object* self) \
+    { \
+        assert(ObjectIs##name(self)); \
+        return (const Object##name*)self; \
+    }
+
+ObjectType_LIST(OBJECT_AS_CONST_IMPL)
+
+#undef OBJECT_AS_CONST_IMPL
 
 void ObjectPrint(const Object* self, FILE* out, PrintFlags flags)
 {
@@ -130,14 +128,65 @@ static Object* AllocateObjectRaw(VirtualMachine* vm, ObjectType type, size_t siz
         MemoryManagerFree(&vm->memory_manager, self, sizeof(Object##name)); \
     } while (false)
 
+ObjectModule* ObjectModuleNew(VirtualMachine* vm, ObjectString* name, ObjectString* path)
+{
+    ObjectModule* obj = ALLOCATE_OBJECT(vm, Module);
+
+    ObjectFunction* script = ObjectFunctionNew(vm, obj, vm->common_strings.script, 0);
+
+    obj->name = name;
+    obj->path = path;
+    obj->script = script;
+    HashTableInit(&obj->exports);
+    HashTableInit(&obj->globals);
+
+    return obj;
+}
+
+ObjectModule* ObjectModuleFromJSON(VirtualMachine* vm, ObjectModule* _module, const cJSON* data)
+{
+    assert(cJSON_IsObject(data));
+
+    const cJSON* name_json = cJSON_GetObjectItemCaseSensitive(data, "name");
+    ObjectString* name = ObjectStringFromJSON(vm, NULL, name_json);
+
+    const cJSON* path_json = cJSON_GetObjectItemCaseSensitive(data, "path");
+    ObjectString* path = ObjectStringFromJSON(vm, NULL, path_json);
+
+    ObjectModule* module = ObjectModuleNew(vm, name, path);
+
+    const cJSON* chunk_json = cJSON_GetObjectItemCaseSensitive(data, "chunk");
+    ChunkFromJSON(&module->script->chunk, vm, module, chunk_json);
+
+    return module;
+}
+
+void ObjectModuleFree(ObjectModule* self, VirtualMachine* vm)
+{
+    ObjectStringFree(self->name, vm);
+    ObjectStringFree(self->path, vm);
+    ObjectFunctionFree(self->script, vm);
+    HashTableDeinit(&self->exports, vm);
+    HashTableDeinit(&self->globals, vm);
+}
+
+void ObjectModulePrint(const ObjectModule* self, FILE* out, PrintFlags flags)
+{
+    fprintf(out, "<module at 0x%p>", self);
+}
+
 ObjectString* ObjectStringNew(VirtualMachine* vm, const char* str, size_t length, size_t hash)
 {
     ObjectString* interned = NULL;
+    printf("INTERNING: %s\n", str);
     if (HashTableGetStringKey(&vm->strings, str, length, hash, &interned))
     {
         MemoryManagerFree(&vm->memory_manager, str, length + 1);
+        printf("-- INTERNED\n");
         return interned;
     }
+
+    printf("-- NEW\n");
 
     ObjectString* obj = ALLOCATE_OBJECT(vm, String);
     obj->str = str;
@@ -150,7 +199,16 @@ ObjectString* ObjectStringNew(VirtualMachine* vm, const char* str, size_t length
     return obj;
 }
 
-ObjectString* ObjectStringFromJSON(VirtualMachine* vm, const cJSON* data)
+ObjectString* ObjectStringFromLiteral(VirtualMachine* vm, const char* str)
+{
+    size_t length = strlen(str);
+    char* new_str = MemoryManagerAllocate(&vm->memory_manager, length + 1);
+    strcpy(new_str, str);
+
+    return ObjectStringNew(vm, new_str, length, CalculateStringHash(str, length));
+}
+
+ObjectString* ObjectStringFromJSON(VirtualMachine* vm, ObjectModule* module, const cJSON* data)
 {
     assert(cJSON_IsString(data));
 
@@ -201,21 +259,22 @@ size_t CalculateStringHash(const char* str, size_t length)
     return hash;
 }
 
-ObjectFunction* ObjectFunctionNew(VirtualMachine* vm, ObjectString* name, size_t arity)
+ObjectFunction* ObjectFunctionNew(VirtualMachine* vm, ObjectModule* module, ObjectString* name, size_t arity)
 {
     ObjectFunction* obj = ALLOCATE_OBJECT(vm, Function);
+    obj->module = module;
     obj->name = name;
     obj->arity = arity;
     ChunkInit(&obj->chunk);
     return obj;
 }
 
-ObjectFunction* ObjectFunctionFromJSON(VirtualMachine* vm, const cJSON* data)
+ObjectFunction* ObjectFunctionFromJSON(VirtualMachine* vm, ObjectModule* module, const cJSON* data)
 {
     assert(cJSON_IsObject(data));
 
     const cJSON* name_json = cJSON_GetObjectItemCaseSensitive(data, "name");
-    ObjectString* name = ObjectStringFromJSON(vm, name_json);
+    ObjectString* name = ObjectStringFromJSON(vm, module, name_json);
 
     const cJSON* arity_json = cJSON_GetObjectItemCaseSensitive(data, "arity");
     assert(cJSON_IsNumber(arity_json));
@@ -223,24 +282,22 @@ ObjectFunction* ObjectFunctionFromJSON(VirtualMachine* vm, const cJSON* data)
 
     const cJSON* chunk_json = cJSON_GetObjectItemCaseSensitive(data, "chunk");
 
-    ObjectFunction* obj = ALLOCATE_OBJECT(vm, Function);
-    obj->arity = arity;
-    obj->name = name;
-    ChunkInit(&obj->chunk);
-    ChunkFromJSON(&obj->chunk, vm, chunk_json);
+    ObjectFunction* obj = ObjectFunctionNew(vm, module, name, arity);
+    ChunkFromJSON(&obj->chunk, vm, module, chunk_json);
 
     return obj;
 }
 
 void ObjectFunctionFree(ObjectFunction* self, VirtualMachine* vm)
 {
-    self->arity = 0;
+    self->module = NULL;
     self->name = NULL;
+    self->arity = 0;
     ChunkDeinit(&self->chunk, vm);
     FREE_OBJECT(vm, self, Function);
 }
 
 void ObjectFunctionPrint(const ObjectFunction* self, FILE* out, PrintFlags flags)
 {
-    fprintf(out, "<function at 0x%p>", self);
+    fprintf(out, "<function %s.%s>", self->module->name->str, self->name->str);
 }

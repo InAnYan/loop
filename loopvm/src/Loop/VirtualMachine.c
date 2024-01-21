@@ -2,24 +2,33 @@
 
 #include "Object.h"
 #include "Opcode.h"
+#include "Util.h"
+
+void CommonStringsInit(CommonStrings* self, VirtualMachine* vm)
+{
+    self->script = ObjectStringFromLiteral(vm, "script");
+}
 
 void VirtualMachineInit(VirtualMachine* self, VirtualMachineConfiguration conf)
 {
     self->conf = conf;
-    MemoryManagerInit(&self->memory_manager, self); // Potential bug, is conf is not set in VM.
+    MemoryManagerInit(&self->memory_manager, self); // Potential bug, if conf is not set in VM.
     self->stack_ptr = self->stack;
     self->frame_ptr = self->frames;
     HashTableInit(&self->strings);
-    HashTableInit(&self->globals);
+    HashTableInitWithCapacity(&self->modules, self);
+
+    CommonStringsInit(&self->common_strings, self); // Bug if a lot is not set.
 }
 
 void VirtualMachineDeinit(VirtualMachine* self)
 {
     HashTableDeinit(&self->strings, self);
-    HashTableDeinit(&self->globals, self);
+    HashTableDeinit(&self->modules, self);
     MemoryManagerDeinit(&self->memory_manager);
 }
 
+static bool PushScript(VirtualMachine* self, ObjectFunction* function);
 static bool PushFrame(VirtualMachine* self, ObjectFunction* function);
 static bool PopFrame(VirtualMachine* self);
 
@@ -30,7 +39,8 @@ static Value StackPop(VirtualMachine* self);
 static void StackPush(VirtualMachine* self, Value value);
 static bool StackPopType(VirtualMachine* self, ValueType type, Value* dest);
 
-static void ResetState(VirtualMachine* self);
+static HashTable* GetGlobals(CallFrame* frame);
+static HashTable* GetExports(CallFrame* frame);
 
 static uint8_t ReadByte(CallFrame* frame);
 static uint16_t ReadShort(CallFrame* frame);
@@ -40,24 +50,48 @@ static void TraceStack(VirtualMachine* self);
 
 static Error BinOp(VirtualMachine* self, Opcode opcode);
 static Error Call(VirtualMachine* self, Value value, uint8_t arity);
+static Error GetAttribute(VirtualMachine* self, Value value, Value key);
 
-static Value Run(VirtualMachine* self);
+static Error Run(VirtualMachine* self);
 
-Value VirtualMachineRunScript(VirtualMachine* self, ObjectFunction* script)
+Error VirtualMachineRunScript(VirtualMachine* self, ObjectFunction* script)
 {
-    ResetState(self);
-
-    StackPush(self, ValueObject((Object*)script));
-
-    CallFrame* frame = self->frame_ptr++;
-    frame->function = script;
-    frame->ip = script->chunk.code;
-    frame->locals = self->stack_ptr;
-
+    bool res = PushScript(self, script);
+    assert(res);
     return Run(self);
 }
 
-Value Run(VirtualMachine* self)
+Error VirtualMachineLoadModule(VirtualMachine* self, ObjectString* path, ObjectModule** ptr)
+{
+    Value interned;
+    if (HashTableGet(&self->modules, ValueObject((Object*)path), &interned))
+    {
+        assert(ValueIsObject(interned) && ObjectIsModule(ValueAsObject(interned)));
+        *ptr = ObjectAsModule(ValueAsObject(interned));
+        return Error_None;
+    }
+
+    char* buffer = NULL;
+    Error error = ReadFile(path->str, &buffer);
+    if (error != Error_None)
+    {
+        return error;
+    }
+
+    const cJSON* data = cJSON_Parse(buffer);
+    if (data == NULL)
+    {
+        return Error_InvalidJSON;
+    }
+
+    free(buffer);
+
+    *ptr = ObjectModuleFromJSON(self, NULL, data);
+
+    return Error_None;
+}
+
+Error Run(VirtualMachine* self)
 {
     while (true)
     {
@@ -104,7 +138,7 @@ Value Run(VirtualMachine* self)
             Value value;
             if (!StackPopType(self, ValueType_Int, &value))
             {
-                return ValueInt(Error_TypeMismatch);
+                return Error_TypeMismatch;
             }
 
             StackPush(self, ValueInt(-ValueAsInt(value)));
@@ -133,7 +167,7 @@ Value Run(VirtualMachine* self)
             Error error = BinOp(self, opcode);
             if (error != Error_None)
             {
-                return ValueInt(error);
+                return error;
             }
             break;
         }
@@ -211,12 +245,12 @@ Value Run(VirtualMachine* self)
             Value value = StackPop(self);
             Value key = ReadConstant(frame); // The compiler is responsible for correctness.
 
-            if (!HashTablePut(&self->globals, self, key, value))
+            if (!HashTablePut(GetGlobals(frame), self, key, value))
             {
                 fprintf(self->conf.user_err,
                         "error: variable redefinition: '%s'\n",
                         ObjectAsString(ValueAsObject(key))->str);
-                return ValueInt(Error_VariableRedefinition);
+                return Error_VariableRedefinition;
             }
 
             break;
@@ -227,12 +261,12 @@ Value Run(VirtualMachine* self)
             Value key = ReadConstant(frame);
 
             Value value;
-            if (!HashTableGet(&self->globals, key, &value))
+            if (!HashTableGet(GetGlobals(frame), key, &value))
             {
                 fprintf(self->conf.user_err,
                         "error: undefined variable: '%s'\n",
                         ObjectAsString(ValueAsObject(key))->str);
-                return ValueInt(Error_UndefinedVariable);
+                return Error_UndefinedVariable;
             }
 
             StackPush(self, value);
@@ -245,12 +279,12 @@ Value Run(VirtualMachine* self)
             Value key = ReadConstant(frame);
             Value value = StackPeek(self);
 
-            if (HashTablePut(&self->globals, self, key, value))
+            if (HashTablePut(GetGlobals(frame), self, key, value))
             {
                 fprintf(self->conf.user_err,
                         "error: undefined variable: '%s'\n",
                         ObjectAsString(ValueAsObject(key))->str);
-                return ValueInt(Error_UndefinedVariable);
+                return Error_UndefinedVariable;
             }
 
             break;
@@ -278,7 +312,7 @@ Value Run(VirtualMachine* self)
             Error error = Call(self, function, arg_count);
             if (error != Error_None)
             {
-                return ValueInt(error);
+                return error;
             }
 
             break;
@@ -286,16 +320,18 @@ Value Run(VirtualMachine* self)
 
         case Opcode_Return:
         {
+            // TODO: uhm, probably bug with the first script that is very last at the end.
+
             Value value = StackPop(self);
 
             if (!PopFrame(self))
             {
-                return ValueInt(Error_StackUnderflow);
+                return Error_StackUnderflow;
             }
 
             if (self->frame_ptr == self->frames)
             {
-                return value;
+                return Error_None;
             }
 
             StackPush(self, value);
@@ -303,11 +339,109 @@ Value Run(VirtualMachine* self)
             break;
         }
 
+        case Opcode_Export:
+        {
+            Value value = StackPop(self);
+            Value key = ReadConstant(frame);
+
+            if (!HashTablePut(GetGlobals(frame), self, key, value))
+            {
+                fprintf(self->conf.user_err,
+                        "error: variable redefinition: '%s'\n",
+                        ObjectAsString(ValueAsObject(key))->str);
+                return Error_VariableRedefinition;
+            }
+
+            if (!HashTablePut(GetExports(frame), self, key, value))
+            {
+                fprintf(self->conf.user_err,
+                        "error: variable reexport: '%s'\n",
+                        ObjectAsString(ValueAsObject(key))->str);
+                return Error_VariableRedefinition;
+            }
+
+            break;
+        }
+
+        case Opcode_Import:
+        {
+            // TODO: BUG in compiler first statement is import wrong line number.
+            // TODO: Or maybe there.
+
+            Value key = ReadConstant(frame);
+            ObjectString* str = ObjectAsString(ValueAsObject(key));
+
+            ObjectModule* module;
+            Error error = VirtualMachineLoadModule(self, str, &module);
+            if (error != Error_None)
+            {
+                return error;
+            }
+
+            if (!PushScript(self, module->script))
+            {
+                return Error_StackOverflow;
+            }
+
+            break;
+        }
+
+        case Opcode_Top:
+        {
+            StackPush(self, StackPeek(self));
+            break;
+        }
+
+        case Opcode_GetAttribute:
+        {
+            Value value = StackPop(self);
+            Value key = ReadConstant(frame);
+
+            Error error = GetAttribute(self, value, key);
+            if (error != Error_None)
+            {
+                return error;
+            }
+
+            break;
+        }
+
+        case Opcode_ModuleEnd:
+        {
+            // Code duplication(
+            // Please forgive me.
+
+            StackPop(self);
+
+            Value module = ValueObject((Object*)frame->function->module);
+
+            if (!PopFrame(self))
+            {
+                return Error_StackUnderflow;
+            }
+
+            if (self->frame_ptr == self->frames)
+            {
+                return Error_None;
+            }
+
+            StackPush(self, module);
+
+            break;
+        }
+
         default:
             fprintf(self->conf.user_err, "FATAL ERROR: unknown opcode: 0x%02x\n", opcode);
-            return ValueInt(Error_UnknownOpcode);
+            return Error_UnknownOpcode;
         }
     }
+}
+
+static bool PushScript(VirtualMachine* self, ObjectFunction* script)
+{
+    StackPush(self, ValueObject((Object*)script));
+
+    return PushFrame(self, script);
 }
 
 static bool PushFrame(VirtualMachine* self, ObjectFunction* function)
@@ -387,6 +521,18 @@ static void ResetState(VirtualMachine* self)
 {
     self->frame_ptr = self->frames;
     self->stack_ptr = self->stack;
+}
+
+static HashTable* GetGlobals(CallFrame* frame)
+{
+    // Super long path...
+    return &frame->function->module->globals;
+}
+
+static HashTable* GetExports(CallFrame* frame)
+{
+    // Super long path...
+    return &frame->function->module->exports;
 }
 
 static uint8_t ReadByte(CallFrame* frame)
@@ -508,4 +654,45 @@ static Error Call(VirtualMachine* self, Value value, uint8_t arity)
                 ObjectTypeToString(obj_type));
         return Error_NonCallable;
     }
+}
+
+static Error GetObjectAttribute(VirtualMachine* self, Object* obj, Value key);
+
+static Error GetAttribute(VirtualMachine* self, Value value, Value key)
+{
+    switch (ValueGetType(value))
+    {
+    case ValueType_Object:
+        return GetObjectAttribute(self, ValueAsObject(value), key);
+    default:
+        fprintf(self->conf.user_err, "error: cannot get attribute from %s\n", ValueTypeToString(ValueGetType(value)));
+        return Error_TypeMismatch;
+    }
+}
+
+static Error GetObjectAttribute(VirtualMachine* self, Object* obj, Value key)
+{
+    switch (ObjectGetType(obj))
+    {
+    case ObjectType_Module:
+    {
+        ObjectModule* module = ObjectAsModule(obj);
+
+        Value value;
+        if (!HashTableGet(&module->exports, key, &value))
+        {
+            fprintf(self->conf.user_err, "error: undefined export: '%s'\n", ObjectAsString(ValueAsObject(key))->str);
+            return Error_UndefinedExport;
+        }
+
+        StackPush(self, value);
+        break;
+    }
+
+    default:
+        fprintf(self->conf.user_err, "error: cannot get attribute from %s\n", ObjectTypeToString(ObjectGetType(obj)));
+        return Error_TypeMismatch;
+    }
+
+    return Error_None;
 }

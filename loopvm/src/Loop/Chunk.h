@@ -18,7 +18,7 @@ typedef struct Chunk
 
 void ChunkInit(Chunk* self);
 void ChunkDeinit(Chunk* self, VirtualMachine* vm);
-void ChunkFromJSON(Chunk* self, VirtualMachine* vm, const cJSON* json);
+void ChunkFromJSON(Chunk* self, VirtualMachine* vm, ObjectModule* module, const cJSON* json);
 size_t ChunkGetLine(const Chunk* self, size_t offset);
 void ChunkDisassemble(const Chunk* self, FILE* out, const char* name);
 const uint8_t* ChunkDisassembleInstruction(const Chunk* self, FILE* out, const uint8_t* offset);

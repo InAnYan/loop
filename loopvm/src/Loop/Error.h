@@ -13,7 +13,10 @@
     o(WrongArgumentsCount) \
     o(IOError) \
     o(TypeMismatch) \
-    o(ZeroDivision)
+    o(ZeroDivision) \
+    o(InvalidJSON) \
+    o(UndefinedExport) \
+    o(FileNotFound)
 
 typedef enum Error
 {

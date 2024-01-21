@@ -32,5 +32,6 @@ FORWARD_DECL(Value);
 FORWARD_DECL(Object);
 FORWARD_DECL(ObjectString);
 FORWARD_DECL(ObjectFunction);
+FORWARD_DECL(ObjectModule);
 
 #endif // LOOP_CONFIGURATION_H

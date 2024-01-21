@@ -35,7 +35,7 @@ typedef struct Value
     ValueUnion as;
 } Value;
 
-Value ValueFromJSON(VirtualMachine* vm, const cJSON* json);
+Value ValueFromJSON(VirtualMachine* vm, ObjectModule* module, const cJSON* json);
 
 Value ValueNull();
 Value ValueBool(bool value);

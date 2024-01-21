@@ -22,20 +22,30 @@ typedef struct CallFrame
     Value* locals;
 } CallFrame;
 
+typedef struct CommonStrings
+{
+    ObjectString* script;
+} CommonStrings;
+
+void CommonStringsInit(CommonStrings* self, VirtualMachine* vm);
+
 typedef struct VirtualMachine
 {
     VirtualMachineConfiguration conf;
     MemoryManager memory_manager;
+    CommonStrings common_strings;
     Value stack[VM_STACK_SIZE_PER_FRAME * VM_FRAMES_COUNT];
     Value* stack_ptr;
     CallFrame frames[VM_FRAMES_COUNT];
     CallFrame* frame_ptr;
     HashTable strings;
-    HashTable globals;
+    HashTable modules;
 } VirtualMachine;
 
 void VirtualMachineInit(VirtualMachine* self, VirtualMachineConfiguration conf);
 void VirtualMachineDeinit(VirtualMachine* self);
-Value VirtualMachineRunScript(VirtualMachine* self, ObjectFunction* script);
+/// Do not forget to run the script.
+Error VirtualMachineLoadModule(VirtualMachine* self, ObjectString* path, ObjectModule** ptr);
+Error VirtualMachineRunScript(VirtualMachine* self, ObjectFunction* script);
 
 #endif // LOOP_VIRTUALMACHINE_H

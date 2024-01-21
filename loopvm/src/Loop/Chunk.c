@@ -29,7 +29,7 @@ void ChunkDeinit(Chunk* self, VirtualMachine* vm)
     ChunkInit(self);
 }
 
-void ChunkFromJSON(Chunk* self, VirtualMachine* vm, const cJSON* json)
+void ChunkFromJSON(Chunk* self, VirtualMachine* vm, ObjectModule* module, const cJSON* json)
 {
     assert(cJSON_IsObject(json));
 
@@ -50,7 +50,7 @@ void ChunkFromJSON(Chunk* self, VirtualMachine* vm, const cJSON* json)
     cJSON_ArrayForEach(constant, constants)
     {
         assert(cJSON_IsObject(constant));
-        PushConstant(self, vm, ValueFromJSON(vm, constant));
+        PushConstant(self, vm, ValueFromJSON(vm, module, constant));
     }
 
     const cJSON* lines = cJSON_GetObjectItemCaseSensitive(json, "lines");
@@ -65,6 +65,7 @@ void ChunkFromJSON(Chunk* self, VirtualMachine* vm, const cJSON* json)
 
     #ifdef DISASM_CHUNKS_AFTER_READING
     ChunkDisassemble(self, vm->conf.debug_out, "<json>");
+    fprintf(vm->conf.debug_out, "\n");
     #endif
 }
 

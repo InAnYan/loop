@@ -26,5 +26,7 @@ add_executable(loopvm
         src/libs/cJSON/cJSON.c
         src/Loop/Error.h
         src/Loop/Error.c
+        src/Loop/Util.h
+        src/Loop/Util.c
 )
 target_include_directories(loopvm PRIVATE src/)

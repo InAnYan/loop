@@ -19,6 +19,7 @@ typedef struct HashTable
 } HashTable;
 
 void HashTableInit(HashTable* self);
+void HashTableInitWithCapacity(HashTable* self, VirtualMachine* vm);
 void HashTableDeinit(HashTable* self, VirtualMachine* vm);
 bool HashTablePut(HashTable* self, VirtualMachine* vm, Value key, Value value);
 void HashTableAddAll(HashTable* self, VirtualMachine* vm, HashTable* other);

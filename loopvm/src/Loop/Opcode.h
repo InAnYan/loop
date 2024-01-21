@@ -29,7 +29,12 @@
     o(JumpIfFalsePop, Jump) \
     o(Jump, Jump) \
     o(Loop, Loop) \
-    o(Call, Byte)
+    o(Call, Byte) \
+    o(Export, Simple) \
+    o(Import, Constant) \
+    o(Top, Simple) \
+    o(GetAttribute, Constant) \
+    o(ModuleEnd, Simple)
 
 typedef enum Opcode
 {
