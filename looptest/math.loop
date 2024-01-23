@@ -1,7 +1,0 @@
-
-function some(x) {
-    return x;
-}
-export function double(x) {
-    return some(x) * 2;
-}

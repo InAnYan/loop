@@ -179,3 +179,42 @@ bool HashTableDelete(HashTable* self, Value key)
     entry->value = ValueBool(true);
     return true;
 }
+
+static void PrintEntries(const HashTable* self, FILE* out, PrintFlags flags);
+
+void HashTablePrint(const HashTable* self, FILE* out, PrintFlags flags)
+{
+    if (self->count == 0)
+    {
+        fprintf(out, "{}");
+        return;
+    }
+
+    fprintf(out, "{ ");
+    PrintEntries(self, out, flags);
+    fprintf(out, " }");
+}
+
+static void PrintEntries(const HashTable* self, FILE* out, PrintFlags flags)
+{
+    size_t length = 0;
+
+    for (size_t i = 0; i < self->capacity; ++i)
+    {
+        const HashTableEntry* entry = &self->entries[i];
+
+        if (!ValueIsNull(entry->key))
+        {
+            ++length;
+
+            ValuePrint(entry->key, out, flags);
+            fprintf(out, ": ");
+            ValuePrint(entry->value, out, flags);
+
+            if (length != self->count)
+            {
+                fprintf(out, ", ");
+            }
+        }
+    }
+}

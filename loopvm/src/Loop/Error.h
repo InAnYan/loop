@@ -16,7 +16,8 @@
     o(ZeroDivision) \
     o(InvalidJSON) \
     o(UndefinedExport) \
-    o(FileNotFound)
+    o(FileNotFound) \
+    o(OutOfRange)
 
 typedef enum Error
 {

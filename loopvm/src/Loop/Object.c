@@ -134,6 +134,7 @@ ObjectModule* ObjectModuleNew(VirtualMachine* vm, ObjectString* name, ObjectStri
 
     ObjectFunction* script = ObjectFunctionNew(vm, obj, vm->common_strings.script, 0);
 
+    obj->is_partial = true;
     obj->name = name;
     obj->path = path;
     obj->script = script;
@@ -154,6 +155,8 @@ ObjectModule* ObjectModuleFromJSON(VirtualMachine* vm, ObjectModule* _module, co
     ObjectString* path = ObjectStringFromJSON(vm, NULL, path_json);
 
     ObjectModule* module = ObjectModuleNew(vm, name, path);
+    bool put_res = HashTablePut(&vm->modules, vm, ValueObject((Object*)module->name), ValueObject((Object*)module));
+    assert(put_res);
 
     const cJSON* chunk_json = cJSON_GetObjectItemCaseSensitive(data, "chunk");
     ChunkFromJSON(&module->script->chunk, vm, module, chunk_json);
@@ -176,7 +179,7 @@ void ObjectModulePrint(const ObjectModule* self, FILE* out, PrintFlags flags)
     fprintf(out, "<module at 0x%p>", self);
 }
 
-ObjectString* ObjectStringNew(VirtualMachine* vm, const char* str, size_t length, size_t hash)
+ObjectString* ObjectStringNew(VirtualMachine* vm, char* str, size_t length, size_t hash)
 {
     ObjectString* interned = NULL;
     if (HashTableGetStringKey(&vm->strings, str, length, hash, &interned))
@@ -297,4 +300,46 @@ void ObjectFunctionFree(ObjectFunction* self, VirtualMachine* vm)
 void ObjectFunctionPrint(const ObjectFunction* self, FILE* out, PrintFlags flags)
 {
     fprintf(out, "<function %s.%s>", self->module->name->str, self->name->str);
+}
+
+ObjectDictionary* ObjectDictionaryNew(VirtualMachine* vm)
+{
+    ObjectDictionary* obj = ALLOCATE_OBJECT(vm, Dictionary);
+    HashTableInit(&obj->entries);
+    return obj;
+}
+
+ObjectDictionary* ObjectDictionaryFromJSON(VirtualMachine* vm, ObjectModule* module, const cJSON* data)
+{
+    assert(cJSON_IsObject(data));
+
+    ObjectDictionary* obj = ObjectDictionaryNew(vm);
+
+    const cJSON* entry = NULL;
+    cJSON_ArrayForEach(entry, data)
+    {
+        assert(cJSON_IsObject(entry));
+
+        const cJSON* key_json = cJSON_GetObjectItemCaseSensitive(entry, "key");
+        const cJSON* value_json = cJSON_GetObjectItemCaseSensitive(entry, "value");
+
+        Value key = ValueFromJSON(vm, module, key_json);
+        Value value = ValueFromJSON(vm, module, value_json);
+
+        HashTablePut(&obj->entries, vm, key, value);
+    }
+
+    return obj;
+}
+
+void ObjectDictionaryFree(ObjectDictionary* self, VirtualMachine* vm)
+{
+    HashTableDeinit(&self->entries, vm);
+    FREE_OBJECT(vm, self, Dictionary);
+}
+
+void ObjectDictionaryPrint(const ObjectDictionary* self, FILE* out, PrintFlags flags)
+{
+    // TODO: Dictionary print and custom objects.
+    HashTablePrint(&self->entries, out, flags);
 }

@@ -37,7 +37,6 @@ static Value StackPeekAt(VirtualMachine* self, size_t offset);
 static Value StackPeekLocal(VirtualMachine* self, size_t offset);
 static Value StackPop(VirtualMachine* self);
 static void StackPush(VirtualMachine* self, Value value);
-static bool StackPopType(VirtualMachine* self, ValueType type, Value* dest);
 
 static HashTable* GetGlobals(CallFrame* frame);
 static HashTable* GetExports(CallFrame* frame);
@@ -48,8 +47,20 @@ static Value ReadConstant(CallFrame* frame);
 
 static void TraceStack(VirtualMachine* self);
 
-static Error BinOp(VirtualMachine* self, Opcode opcode);
+typedef enum BinaryOp
+{
+    BinaryOp_Add,
+    BinaryOp_Subtract,
+    BinaryOp_Multiply,
+    BinaryOp_Divide,
+    BinaryOp_Greater,
+    BinaryOp_Less,
+} BinaryOp;
+
+static Error BinOp(VirtualMachine* self, BinaryOp op);
 static Error Call(VirtualMachine* self, Value value, uint8_t arity);
+static Error GetItem(VirtualMachine* self, Value value, uint8_t arity);
+static Error SetItem(VirtualMachine* self, Value value, uint8_t arity);
 static Error GetAttribute(VirtualMachine* self, Value value, Value key);
 
 static Error Run(VirtualMachine* self);
@@ -90,6 +101,18 @@ Error VirtualMachineLoadModule(VirtualMachine* self, ObjectString* path, ObjectM
 
     return Error_None;
 }
+
+// TODO: Check value type object types and classes.
+#define CHECK_VALUE_TYPE(self, value, type) \
+    do \
+    { \
+        if (!ValueIs##type(value)) \
+        { \
+            fprintf(self->conf.user_err, "error: expected %s, got %s\n", \
+                #type, ValueTypeToString(ValueGetType(value))); \
+            return Error_TypeMismatch; \
+        } \
+    } while (0)
 
 Error Run(VirtualMachine* self)
 {
@@ -135,12 +158,8 @@ Error Run(VirtualMachine* self)
 
         case Opcode_Negate:
         {
-            Value value;
-            if (!StackPopType(self, ValueType_Int, &value))
-            {
-                return Error_TypeMismatch;
-            }
-
+            Value value = StackPop(self);
+            CHECK_VALUE_TYPE(self, value, Int);
             StackPush(self, ValueInt(-ValueAsInt(value)));
             break;
         }
@@ -157,23 +176,27 @@ Error Run(VirtualMachine* self)
             break;
         }
 
-        case Opcode_Add:
-        case Opcode_Subtract:
-        case Opcode_Multiply:
-        case Opcode_Divide:
-        case Opcode_Greater:
-        case Opcode_Less:
-        {
-            Error error = BinOp(self, opcode);
-            if (error != Error_None)
-            {
-                return error;
-            }
-            break;
-        }
+            #define BIN_OP(self, op) \
+                case Opcode_##op: \
+                    { \
+                        Error error = BinOp(self, BinaryOp_##op); \
+                        if (error != Error_None) \
+                        { \
+                             return error; \
+                        } \
+                        break; \
+                    }
+
+        BIN_OP(self, Add);
+        BIN_OP(self, Subtract);
+        BIN_OP(self, Multiply);
+        BIN_OP(self, Divide);
+        BIN_OP(self, Greater);
+        BIN_OP(self, Less);
 
         case Opcode_Equal:
         {
+            // TODO: Objects custom equality.
             Value b = StackPop(self);
             Value a = StackPop(self);
             StackPush(self, ValueBool(ValueAreEqual(a, b)));
@@ -182,52 +205,46 @@ Error Run(VirtualMachine* self)
 
         // Code duplication...
 
+            #define JUMP_COND(self, frame, opcode, op, bool, mode) \
+                do \
+                { \
+                    uint16_t offset = ReadShort(frame); \
+                    if (ValueIs##bool(Stack##mode(self))) \
+                    { \
+                        frame->ip op##= offset; \
+                    } \
+                } while (false)
+
         case Opcode_JumpIfFalse:
-        {
-            uint16_t offset = ReadShort(frame);
-            if (ValueIsFalse(StackPeek(self)))
-            {
-                frame->ip += offset;
-            }
+            JUMP_COND(self, frame, opcode, +, False, Peek);
             break;
-        }
 
         case Opcode_JumpIfFalsePop:
-        {
-            uint16_t offset = ReadShort(frame);
-            if (ValueIsFalse(StackPop(self)))
-            {
-                frame->ip += offset;
-            }
+            JUMP_COND(self, frame, opcode, +, False, Pop);
             break;
-        }
 
         case Opcode_JumpIfTrue:
-        {
-            uint16_t offset = ReadShort(frame);
-            if (ValueIsTrue(StackPeek(self)))
-            {
-                frame->ip += offset;
-            }
+            JUMP_COND(self, frame, opcode, +, True, Peek);
             break;
-        }
+
+            #define JUMP_UNCOND(frame, op) \
+                do \
+                { \
+                    uint16_t offset = ReadShort(frame); \
+                    frame->ip op##= offset; \
+                } while (false)
 
         case Opcode_Jump:
-        {
-            uint16_t offset = ReadShort(frame);
-            frame->ip += offset;
+            JUMP_UNCOND(frame, +);
             break;
-        }
 
         case Opcode_Loop:
-        {
-            uint16_t offset = ReadShort(frame);
-            frame->ip -= offset;
+            JUMP_UNCOND(frame, -);
             break;
-        }
 
         case Opcode_Print:
         {
+            // TODO: Objects custom printing.
             Value value = StackPop(self);
             ValuePrint(value, self->conf.user_out, PrintFlags_Pretty);
             fprintf(self->conf.user_out, "\n");
@@ -304,19 +321,23 @@ Error Run(VirtualMachine* self)
             break;
         }
 
-        case Opcode_Call:
-        {
-            uint8_t arg_count = ReadByte(frame);
-            Value function = StackPeekAt(self, arg_count);
+            #define CALL_LIKE_OP(self, frame, op) \
+                case Opcode_##op: \
+                    { \
+                        uint8_t arg_count = ReadByte(frame); \
+                        Value function = StackPeekAt(self, arg_count); \
+                        \
+                        Error error = op(self, function, arg_count); \
+                        if (error != Error_None) \
+                        { \
+                            return error; \
+                        } \
+                        break; \
+                    }
 
-            Error error = Call(self, function, arg_count);
-            if (error != Error_None)
-            {
-                return error;
-            }
-
-            break;
-        }
+        CALL_LIKE_OP(self, frame, Call);
+        CALL_LIKE_OP(self, frame, GetItem);
+        CALL_LIKE_OP(self, frame, SetItem);
 
         case Opcode_Return:
         {
@@ -378,7 +399,7 @@ Error Run(VirtualMachine* self)
                 return error;
             }
 
-            if (!PushScript(self, module->script))
+            if (module->is_partial && !PushScript(self, module->script))
             {
                 return Error_StackOverflow;
             }
@@ -413,6 +434,7 @@ Error Run(VirtualMachine* self)
 
             StackPop(self);
 
+            frame->function->module->is_partial = false;
             Value module = ValueObject((Object*)frame->function->module);
 
             if (!PopFrame(self))
@@ -426,6 +448,24 @@ Error Run(VirtualMachine* self)
             }
 
             StackPush(self, module);
+
+            break;
+        }
+
+        case Opcode_BuildDictionary:
+        {
+            uint8_t count = ReadByte(frame);
+
+            ObjectDictionary* obj = ObjectDictionaryNew(self);
+
+            for (int i = 0; i < count; ++i)
+            {
+                Value value = StackPop(self);
+                Value key = StackPop(self);
+                HashTablePut(&obj->entries, self, key, value);
+            }
+
+            StackPush(self, ValueObject((Object*)obj));
 
             break;
         }
@@ -503,35 +543,14 @@ static void StackPush(VirtualMachine* self, Value value)
     *self->stack_ptr++ = value;
 }
 
-static bool StackPopType(VirtualMachine* self, ValueType type, Value* dest)
-{
-    Value value = StackPop(self);
-    if (ValueGetType(value) != type)
-    {
-        fprintf(self->conf.user_err, "error: type mismatch, expected %s, got %s\n",
-                ValueTypeToString(type), ValueTypeToString(ValueGetType(value)));
-        return false;
-    }
-
-    *dest = value;
-    return true;
-}
-
-static void ResetState(VirtualMachine* self)
-{
-    self->frame_ptr = self->frames;
-    self->stack_ptr = self->stack;
-}
-
 static HashTable* GetGlobals(CallFrame* frame)
 {
-    // Super long path...
+    // TODO: Cache globals.
     return &frame->function->module->globals;
 }
 
 static HashTable* GetExports(CallFrame* frame)
 {
-    // Super long path...
     return &frame->function->module->exports;
 }
 
@@ -569,33 +588,29 @@ static void TraceStack(VirtualMachine* self)
     fprintf(out, "\n");
 }
 
-static Error BinOp(VirtualMachine* self, Opcode opcode)
+static Error BinOp(VirtualMachine* self, BinaryOp op)
 {
-    Value b;
-    Value a;
+    Value b = StackPop(self);
+    Value a = StackPop(self);
 
-    if (!StackPopType(self, ValueType_Int, &b) || !StackPopType(self, ValueType_Int, &a))
-    {
-        fprintf(self->conf.user_err, "error: type mismatch, expected Int, got %s and %s\n",
-                ValueTypeToString(ValueGetType(a)), ValueTypeToString(ValueGetType(b)));
-        return Error_TypeMismatch;
-    }
+    CHECK_VALUE_TYPE(self, a, Int);
+    CHECK_VALUE_TYPE(self, b, Int);
 
     int rhs = ValueAsInt(b);
     int lhs = ValueAsInt(a);
 
-    switch (opcode)
+    switch (op)
     {
-    case Opcode_Add:
+    case BinaryOp_Add:
         StackPush(self, ValueInt(lhs + rhs));
         break;
-    case Opcode_Subtract:
+    case BinaryOp_Subtract:
         StackPush(self, ValueInt(lhs - rhs));
         break;
-    case Opcode_Multiply:
+    case BinaryOp_Multiply:
         StackPush(self, ValueInt(lhs * rhs));
         break;
-    case Opcode_Divide:
+    case BinaryOp_Divide:
         if (rhs == 0)
         {
             fprintf(self->conf.user_err, "error: zero division\n");
@@ -603,14 +618,12 @@ static Error BinOp(VirtualMachine* self, Opcode opcode)
         }
         StackPush(self, ValueInt(lhs / rhs));
         break;
-    case Opcode_Greater:
+    case BinaryOp_Greater:
         StackPush(self, ValueBool(lhs > rhs));
         break;
-    case Opcode_Less:
+    case BinaryOp_Less:
         StackPush(self, ValueBool(lhs < rhs));
         break;
-    default:
-        assert(false && "Unimplemented BinOp for some opcode");
     }
 
     return Error_None;
@@ -691,6 +704,129 @@ static Error GetObjectAttribute(VirtualMachine* self, Object* obj, Value key)
 
     default:
         fprintf(self->conf.user_err, "error: cannot get attribute from %s\n", ObjectTypeToString(ObjectGetType(obj)));
+        return Error_TypeMismatch;
+    }
+
+    return Error_None;
+}
+
+static Error GetItem(VirtualMachine* self, Value value, uint8_t arity)
+{
+    CHECK_VALUE_TYPE(self, value, Object);
+
+    // TODO: This arity check is not general.
+    if (arity != 1)
+    {
+        fprintf(self->conf.user_err, "error: wrong number of arguments, expected 1, got %d\n",
+                arity);
+        return Error_WrongArgumentsCount;
+    }
+
+    Value arg = StackPop(self);
+    StackPop(self); // value
+
+    Object* obj = ValueAsObject(value);
+
+    switch (ObjectGetType(obj))
+    {
+    case ObjectType_String:
+    {
+        ObjectString* str = ObjectAsString(obj);
+        // TODO: CHARACTER TYPE?
+
+        CHECK_VALUE_TYPE(self, arg, Int);
+
+        int index = ValueAsInt(arg);
+        if (index < 0 || index >= str->length)
+        {
+            fprintf(self->conf.user_err, "error: index out of range\n");
+            return Error_OutOfRange;
+        }
+
+        StackPush(self, ValueInt(str->str[index]));
+
+        break;
+    }
+
+    case ObjectType_Dictionary:
+    {
+        ObjectDictionary* dictionary = ObjectAsDictionary(obj);
+
+        Value result;
+        if (!HashTableGet(&dictionary->entries, arg, &result))
+        {
+            fprintf(self->conf.user_err, "error: undefined key: ");
+            ValuePrint(arg, self->conf.user_err, PrintFlags_Debug);
+            return Error_OutOfRange;
+        }
+
+        StackPush(self, result);
+        break;
+    }
+
+    default:
+        fprintf(self->conf.user_err, "error: cannot get item from %s\n",
+                ObjectTypeToString(ObjectGetType(obj)));
+        return Error_TypeMismatch;
+    }
+
+    return Error_None;
+}
+
+static Error SetItem(VirtualMachine* self, Value value, uint8_t arity)
+{
+    CHECK_VALUE_TYPE(self, value, Object);
+
+    // TODO: This arity check is not general.
+    if (arity != 2)
+    {
+        fprintf(self->conf.user_err, "error: wrong number of arguments, expected 1, got %d\n",
+                arity);
+        return Error_WrongArgumentsCount;
+    }
+
+    Value assign = StackPop(self);
+    Value arg = StackPop(self);
+
+    Object* obj = ValueAsObject(value);
+
+    // TODO: RESULT OF ASSIGNEMNT OF AN ITEM?
+    // Currently it is the original object.
+
+    switch (ObjectGetType(obj))
+    {
+    case ObjectType_String:
+    {
+        ObjectString* str = ObjectAsString(obj);
+        // TODO: CHARACTER TYPE?
+
+        CHECK_VALUE_TYPE(self, arg, Int);
+        CHECK_VALUE_TYPE(self, assign, Int);
+
+        int index = ValueAsInt(arg);
+        if (index < 0 || index >= str->length)
+        {
+            fprintf(self->conf.user_err, "error: index out of range\n");
+            return Error_OutOfRange;
+        }
+
+        // TODO: Modifiyable strings - yes or no?
+        str->str[index] = ValueAsInt(assign);
+
+        break;
+    }
+
+    case ObjectType_Dictionary:
+    {
+        ObjectDictionary* dictionary = ObjectAsDictionary(obj);
+
+        HashTablePut(&dictionary->entries, self, arg, assign);
+        break;
+    }
+
+    default:
+        fprintf(self->conf.user_err, "error: cannot set item of %s\n",
+                ObjectTypeToString(ObjectGetType(obj)));
         return Error_TypeMismatch;
     }
 

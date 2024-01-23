@@ -33,7 +33,7 @@ int main(int argc, const char* argv[])
     VirtualMachineDeinit(&vm);
 
     #ifdef DEBUG_MODE
-    printf("%s\n", ErrorToString(error));
+    // printf("%s\n", ErrorToString(error));
     #endif
 
     return error;

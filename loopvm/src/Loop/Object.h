@@ -9,7 +9,8 @@
 #define ObjectType_LIST(o) \
     o(String) \
     o(Function) \
-    o(Module)
+    o(Module) \
+    o(Dictionary)
 
 typedef enum ObjectType
 {
@@ -36,17 +37,19 @@ ObjectType ObjectGetType(const Object* self);
 bool ObjectIsString(const Object* self);
 bool ObjectIsFunction(const Object* self);
 bool ObjectIsModule(const Object* self);
+bool ObjectIsDictionary(const Object* self);
 
 ObjectString* ObjectAsString(Object* self);
 ObjectFunction* ObjectAsFunction(Object* self);
 ObjectModule* ObjectAsModule(Object* self);
+ObjectDictionary* ObjectAsDictionary(Object* self);
 
 const ObjectString* ObjectAsStringConst(const Object* self);
 const ObjectFunction* ObjectAsFunctionConst(const Object* self);
 const ObjectModule* ObjectAsModuleConst(const Object* self);
+const ObjectDictionary* ObjectAsDictionaryConst(const Object* self);
 
 void ObjectPrint(const Object* self, FILE* out, PrintFlags flags);
-size_t ObjectHash(const Object* self);
 
 void ObjectFree(Object* self, VirtualMachine* vm);
 
@@ -58,6 +61,7 @@ typedef struct ObjectModule
     ObjectFunction* script;
     HashTable exports;
     HashTable globals;
+    bool is_partial;
 } ObjectModule;
 
 ObjectModule* ObjectModuleNew(VirtualMachine* vm, ObjectString* name, ObjectString* path);
@@ -70,12 +74,12 @@ void ObjectModulePrint(const ObjectModule* self, FILE* out, PrintFlags flags);
 typedef struct ObjectString
 {
     Object obj;
-    const char* str;
+    char* str;
     size_t length;
     size_t hash;
 } ObjectString;
 
-ObjectString* ObjectStringNew(VirtualMachine* vm, const char* str, size_t length, size_t hash);
+ObjectString* ObjectStringNew(VirtualMachine* vm, char* str, size_t length, size_t hash);
 ObjectString* ObjectStringFromLiteral(VirtualMachine* vm, const char* str);
 /// module can be NULL.
 ObjectString* ObjectStringFromJSON(VirtualMachine* vm, ObjectModule* module, const cJSON* data);
@@ -99,5 +103,17 @@ ObjectFunction* ObjectFunctionFromJSON(VirtualMachine* vm, ObjectModule* module,
 void ObjectFunctionFree(ObjectFunction* self, VirtualMachine* vm);
 
 void ObjectFunctionPrint(const ObjectFunction* self, FILE* out, PrintFlags flags);
+
+typedef struct ObjectDictionary
+{
+    Object obj;
+    HashTable entries;
+} ObjectDictionary;
+
+ObjectDictionary* ObjectDictionaryNew(VirtualMachine* vm);
+ObjectDictionary* ObjectDictionaryFromJSON(VirtualMachine* vm, ObjectModule* module, const cJSON* data);
+void ObjectDictionaryFree(ObjectDictionary* self, VirtualMachine* vm);
+
+void ObjectDictionaryPrint(const ObjectDictionary* self, FILE* out, PrintFlags flags);
 
 #endif // LOOP_OBJECT_H

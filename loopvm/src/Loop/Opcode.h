@@ -34,7 +34,10 @@
     o(Import, Constant) \
     o(Top, Simple) \
     o(GetAttribute, Constant) \
-    o(ModuleEnd, Simple)
+    o(ModuleEnd, Simple) \
+    o(BuildDictionary, Byte) \
+    o(GetItem, Byte) \
+    o(SetItem, Byte)
 
 typedef enum Opcode
 {

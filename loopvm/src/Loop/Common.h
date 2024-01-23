@@ -33,5 +33,6 @@ FORWARD_DECL(Object);
 FORWARD_DECL(ObjectString);
 FORWARD_DECL(ObjectFunction);
 FORWARD_DECL(ObjectModule);
+FORWARD_DECL(ObjectDictionary);
 
 #endif // LOOP_CONFIGURATION_H

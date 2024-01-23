@@ -1,7 +1,0 @@
-import "math.loop" as math;
-import {printMe, id, someVar} from "util.loop";
-
-print math.double(4);
-printMe("HI!");
-print id("ID");
-print someVar;
