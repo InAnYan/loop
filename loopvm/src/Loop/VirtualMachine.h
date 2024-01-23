@@ -7,14 +7,6 @@
 #include "Value.h"
 #include "HashTable.h"
 
-typedef struct VirtualMachineConfiguration
-{
-    FILE* user_out;
-    FILE* user_err;
-    FILE* debug_out;
-    FILE* user_in;
-} VirtualMachineConfiguration;
-
 typedef struct CallFrame
 {
     ObjectFunction* function;
@@ -31,7 +23,6 @@ void CommonStringsInit(CommonStrings* self, VirtualMachine* vm);
 
 typedef struct VirtualMachine
 {
-    VirtualMachineConfiguration conf;
     MemoryManager memory_manager;
     CommonStrings common_strings;
     Value stack[VM_STACK_SIZE_PER_FRAME * VM_FRAMES_COUNT];
@@ -42,7 +33,7 @@ typedef struct VirtualMachine
     HashTable modules;
 } VirtualMachine;
 
-void VirtualMachineInit(VirtualMachine* self, VirtualMachineConfiguration conf);
+void VirtualMachineInit(VirtualMachine* self);
 void VirtualMachineDeinit(VirtualMachine* self);
 /// Do not forget to run the script.
 Error VirtualMachineLoadModule(VirtualMachine* self, ObjectString* path, ObjectModule** ptr);

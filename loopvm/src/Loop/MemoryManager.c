@@ -9,7 +9,7 @@ void MemoryManagerInit(MemoryManager* self, VirtualMachine* vm)
 {
     self->objects = NULL;
     self->vm = vm;
-    self->debug_out = vm->conf.debug_out;
+    self->debug_out = DEBUG_OUT;
 }
 
 void MemoryManagerDeinit(MemoryManager* self)

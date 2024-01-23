@@ -4,6 +4,8 @@
 #include "Object.h"
 #include "VirtualMachine.h"
 
+#include "Objects/String.h"
+
 void HashTableInit(HashTable* self)
 {
     self->capacity = 0;
@@ -180,9 +182,9 @@ bool HashTableDelete(HashTable* self, Value key)
     return true;
 }
 
-static void PrintEntries(const HashTable* self, FILE* out, PrintFlags flags);
+static void PrintEntries(const HashTable* self, FILE* out);
 
-void HashTablePrint(const HashTable* self, FILE* out, PrintFlags flags)
+void HashTablePrint(const HashTable* self, FILE* out)
 {
     if (self->count == 0)
     {
@@ -191,11 +193,11 @@ void HashTablePrint(const HashTable* self, FILE* out, PrintFlags flags)
     }
 
     fprintf(out, "{ ");
-    PrintEntries(self, out, flags);
+    PrintEntries(self, out);
     fprintf(out, " }");
 }
 
-static void PrintEntries(const HashTable* self, FILE* out, PrintFlags flags)
+static void PrintEntries(const HashTable* self, FILE* out)
 {
     size_t length = 0;
 
@@ -207,9 +209,9 @@ static void PrintEntries(const HashTable* self, FILE* out, PrintFlags flags)
         {
             ++length;
 
-            ValuePrint(entry->key, out, flags);
+            ValuePrint(entry->key, out);
             fprintf(out, ": ");
-            ValuePrint(entry->value, out, flags);
+            ValuePrint(entry->value, out);
 
             if (length != self->count)
             {

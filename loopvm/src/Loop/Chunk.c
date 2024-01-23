@@ -64,8 +64,8 @@ void ChunkFromJSON(Chunk* self, VirtualMachine* vm, ObjectModule* module, const 
     }
 
     #ifdef DISASM_CHUNKS_AFTER_READING
-    ChunkDisassemble(self, vm->conf.debug_out, "<json>");
-    fprintf(vm->conf.debug_out, "\n");
+    ChunkDisassemble(self, DEBUG_OUT, "<json>");
+    fprintf(DEBUG_OUT, "\n");
     #endif
 }
 
@@ -188,7 +188,7 @@ const uint8_t* DisassembleConstant(const Chunk* self, FILE* out, const uint8_t* 
     Value value = self->constants[index];
 
     fprintf(out, "%-16s %4d ", name, index);
-    ValuePrint(value, out, PrintFlags_Debug);
+    ValuePrint(value, out);
     fprintf(out, "\n");
 
     return offset + 2;

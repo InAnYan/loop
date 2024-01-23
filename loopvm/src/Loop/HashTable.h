@@ -26,6 +26,6 @@ void HashTableAddAll(HashTable* self, VirtualMachine* vm, HashTable* other);
 bool HashTableGet(HashTable* self, Value key, Value* value);
 bool HashTableGetStringKey(HashTable* self, const char* key, size_t length, size_t hash, ObjectString** ptr);
 bool HashTableDelete(HashTable* self, Value key);
-void HashTablePrint(const HashTable* self, FILE* out, PrintFlags flags);
+void HashTablePrint(const HashTable* self, FILE* out);
 
 #endif // LOOP_HASHTABLE_H

@@ -4,6 +4,9 @@
 #include "Loop/Util.h"
 #include "Loop/VirtualMachine.h"
 
+#include "Loop/Objects/String.h"
+#include "Loop/Objects/Module.h"
+
 int main(int argc, const char* argv[])
 {
     if (argc != 2)
@@ -15,15 +18,14 @@ int main(int argc, const char* argv[])
 
     const char* path = argv[1];
 
-    VirtualMachineConfiguration conf = {.user_out = stdout, .user_err = stderr, .debug_out = stderr, .user_in = stdin};
     VirtualMachine vm;
-    VirtualMachineInit(&vm, conf);
+    VirtualMachineInit(&vm);
 
     ObjectModule* module = NULL;
     Error err = VirtualMachineLoadModule(&vm, ObjectStringFromLiteral(&vm, path), &module);
     if (err != Error_None)
     {
-        ProcessReadError(err, path, conf.user_err);
+        ProcessReadError(err, path, USER_ERR);
         VirtualMachineDeinit(&vm);
         return err;
     }

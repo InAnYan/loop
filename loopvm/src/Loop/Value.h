@@ -53,7 +53,7 @@ bool ValueAsBool(Value self);
 int ValueAsInt(Value self);
 Object* ValueAsObject(Value self);
 
-void ValuePrint(Value self, FILE* out, PrintFlags flags);
+void ValuePrint(Value self, FILE* out);
 bool ValueAreEqual(Value a, Value b);
 size_t ValueHash(Value self);
 

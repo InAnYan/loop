@@ -4,14 +4,18 @@
 #include "Opcode.h"
 #include "Util.h"
 
+#include "Objects/String.h"
+#include "Objects/Dictionary.h"
+#include "Objects/Function.h"
+#include "Objects/Module.h"
+
 void CommonStringsInit(CommonStrings* self, VirtualMachine* vm)
 {
     self->script = ObjectStringFromLiteral(vm, "script");
 }
 
-void VirtualMachineInit(VirtualMachine* self, VirtualMachineConfiguration conf)
+void VirtualMachineInit(VirtualMachine* self)
 {
-    self->conf = conf;
     MemoryManagerInit(&self->memory_manager, self); // Potential bug, if conf is not set in VM.
     self->stack_ptr = self->stack;
     self->frame_ptr = self->frames;
@@ -89,7 +93,7 @@ Error VirtualMachineLoadModule(VirtualMachine* self, ObjectString* path, ObjectM
         return error;
     }
 
-    const cJSON* data = cJSON_Parse(buffer);
+    cJSON* data = cJSON_Parse(buffer);
     if (data == NULL)
     {
         return Error_InvalidJSON;
@@ -98,6 +102,8 @@ Error VirtualMachineLoadModule(VirtualMachine* self, ObjectString* path, ObjectM
     free(buffer);
 
     *ptr = ObjectModuleFromJSON(self, NULL, data);
+
+    cJSON_Delete(data);
 
     return Error_None;
 }
@@ -108,7 +114,7 @@ Error VirtualMachineLoadModule(VirtualMachine* self, ObjectString* path, ObjectM
     { \
         if (!ValueIs##type(value)) \
         { \
-            fprintf(self->conf.user_err, "error: expected %s, got %s\n", \
+            fprintf(USER_ERR, "error: expected %s, got %s\n", \
                 #type, ValueTypeToString(ValueGetType(value))); \
             return Error_TypeMismatch; \
         } \
@@ -123,7 +129,7 @@ Error Run(VirtualMachine* self)
         #ifdef VM_TRACE_EXECUTION
 
         TraceStack(self);
-        ChunkDisassembleInstruction(&frame->function->chunk, self->conf.debug_out, frame->ip);
+        ChunkDisassembleInstruction(&frame->function->chunk, DEBUG_OUT, frame->ip);
 
         #endif
 
@@ -246,8 +252,8 @@ Error Run(VirtualMachine* self)
         {
             // TODO: Objects custom printing.
             Value value = StackPop(self);
-            ValuePrint(value, self->conf.user_out, PrintFlags_Pretty);
-            fprintf(self->conf.user_out, "\n");
+            ValuePrint(value, USER_OUT);
+            fprintf(USER_OUT, "\n");
             break;
         }
 
@@ -264,7 +270,7 @@ Error Run(VirtualMachine* self)
 
             if (!HashTablePut(GetGlobals(frame), self, key, value))
             {
-                fprintf(self->conf.user_err,
+                fprintf(USER_ERR,
                         "error: variable redefinition: '%s'\n",
                         ObjectAsString(ValueAsObject(key))->str);
                 return Error_VariableRedefinition;
@@ -280,7 +286,7 @@ Error Run(VirtualMachine* self)
             Value value;
             if (!HashTableGet(GetGlobals(frame), key, &value))
             {
-                fprintf(self->conf.user_err,
+                fprintf(USER_ERR,
                         "error: undefined variable: '%s'\n",
                         ObjectAsString(ValueAsObject(key))->str);
                 return Error_UndefinedVariable;
@@ -298,7 +304,7 @@ Error Run(VirtualMachine* self)
 
             if (HashTablePut(GetGlobals(frame), self, key, value))
             {
-                fprintf(self->conf.user_err,
+                fprintf(USER_ERR,
                         "error: undefined variable: '%s'\n",
                         ObjectAsString(ValueAsObject(key))->str);
                 return Error_UndefinedVariable;
@@ -367,7 +373,7 @@ Error Run(VirtualMachine* self)
 
             if (!HashTablePut(GetGlobals(frame), self, key, value))
             {
-                fprintf(self->conf.user_err,
+                fprintf(USER_ERR,
                         "error: variable redefinition: '%s'\n",
                         ObjectAsString(ValueAsObject(key))->str);
                 return Error_VariableRedefinition;
@@ -375,7 +381,7 @@ Error Run(VirtualMachine* self)
 
             if (!HashTablePut(GetExports(frame), self, key, value))
             {
-                fprintf(self->conf.user_err,
+                fprintf(USER_ERR,
                         "error: variable reexport: '%s'\n",
                         ObjectAsString(ValueAsObject(key))->str);
                 return Error_VariableRedefinition;
@@ -471,7 +477,7 @@ Error Run(VirtualMachine* self)
         }
 
         default:
-            fprintf(self->conf.user_err, "FATAL ERROR: unknown opcode: 0x%02x\n", opcode);
+            fprintf(USER_ERR, "FATAL ERROR: unknown opcode: 0x%02x\n", opcode);
             return Error_UnknownOpcode;
         }
     }
@@ -576,12 +582,12 @@ static Value ReadConstant(CallFrame* frame)
 
 static void TraceStack(VirtualMachine* self)
 {
-    FILE* out = self->conf.debug_out;
+    FILE* out = DEBUG_OUT;
 
     for (Value* ptr = self->stack; ptr != self->stack_ptr; ++ptr)
     {
         fprintf(out, "[ ");
-        ValuePrint(*ptr, out, PrintFlags_Debug);
+        ValuePrint(*ptr, out);
         fprintf(out, " ]");
     }
 
@@ -613,7 +619,7 @@ static Error BinOp(VirtualMachine* self, BinaryOp op)
     case BinaryOp_Divide:
         if (rhs == 0)
         {
-            fprintf(self->conf.user_err, "error: zero division\n");
+            fprintf(USER_ERR, "error: zero division\n");
             return Error_ZeroDivision;
         }
         StackPush(self, ValueInt(lhs / rhs));
@@ -633,7 +639,7 @@ static Error Call(VirtualMachine* self, Value value, uint8_t arity)
 {
     if (!ValueIsObject(value))
     {
-        fprintf(self->conf.user_err, "error: expected callable, got %s\n",
+        fprintf(USER_ERR, "error: expected callable, got %s\n",
                 ValueTypeToString(ValueGetType(value)));
         return Error_NonCallable;
     }
@@ -649,7 +655,7 @@ static Error Call(VirtualMachine* self, Value value, uint8_t arity)
 
         if (func->arity != arity)
         {
-            fprintf(self->conf.user_err, "error: wrong number of arguments, expected %ld, got %d\n",
+            fprintf(USER_ERR, "error: wrong number of arguments, expected %ld, got %d\n",
                     func->arity, arity);
             return Error_WrongArgumentsCount;
         }
@@ -663,7 +669,7 @@ static Error Call(VirtualMachine* self, Value value, uint8_t arity)
     }
 
     default:
-        fprintf(self->conf.user_err, "error: expected callable, got %s\n",
+        fprintf(USER_ERR, "error: expected callable, got %s\n",
                 ObjectTypeToString(obj_type));
         return Error_NonCallable;
     }
@@ -678,7 +684,7 @@ static Error GetAttribute(VirtualMachine* self, Value value, Value key)
     case ValueType_Object:
         return GetObjectAttribute(self, ValueAsObject(value), key);
     default:
-        fprintf(self->conf.user_err, "error: cannot get attribute from %s\n", ValueTypeToString(ValueGetType(value)));
+        fprintf(USER_ERR, "error: cannot get attribute from %s\n", ValueTypeToString(ValueGetType(value)));
         return Error_TypeMismatch;
     }
 }
@@ -694,7 +700,7 @@ static Error GetObjectAttribute(VirtualMachine* self, Object* obj, Value key)
         Value value;
         if (!HashTableGet(&module->exports, key, &value))
         {
-            fprintf(self->conf.user_err, "error: undefined export: '%s'\n", ObjectAsString(ValueAsObject(key))->str);
+            fprintf(USER_ERR, "error: undefined export: '%s'\n", ObjectAsString(ValueAsObject(key))->str);
             return Error_UndefinedExport;
         }
 
@@ -703,7 +709,7 @@ static Error GetObjectAttribute(VirtualMachine* self, Object* obj, Value key)
     }
 
     default:
-        fprintf(self->conf.user_err, "error: cannot get attribute from %s\n", ObjectTypeToString(ObjectGetType(obj)));
+        fprintf(USER_ERR, "error: cannot get attribute from %s\n", ObjectTypeToString(ObjectGetType(obj)));
         return Error_TypeMismatch;
     }
 
@@ -717,7 +723,7 @@ static Error GetItem(VirtualMachine* self, Value value, uint8_t arity)
     // TODO: This arity check is not general.
     if (arity != 1)
     {
-        fprintf(self->conf.user_err, "error: wrong number of arguments, expected 1, got %d\n",
+        fprintf(USER_ERR, "error: wrong number of arguments, expected 1, got %d\n",
                 arity);
         return Error_WrongArgumentsCount;
     }
@@ -739,7 +745,7 @@ static Error GetItem(VirtualMachine* self, Value value, uint8_t arity)
         int index = ValueAsInt(arg);
         if (index < 0 || index >= str->length)
         {
-            fprintf(self->conf.user_err, "error: index out of range\n");
+            fprintf(USER_ERR, "error: index out of range\n");
             return Error_OutOfRange;
         }
 
@@ -755,8 +761,8 @@ static Error GetItem(VirtualMachine* self, Value value, uint8_t arity)
         Value result;
         if (!HashTableGet(&dictionary->entries, arg, &result))
         {
-            fprintf(self->conf.user_err, "error: undefined key: ");
-            ValuePrint(arg, self->conf.user_err, PrintFlags_Debug);
+            fprintf(USER_ERR, "error: undefined key: ");
+            ValuePrint(arg, USER_ERR);
             return Error_OutOfRange;
         }
 
@@ -765,7 +771,7 @@ static Error GetItem(VirtualMachine* self, Value value, uint8_t arity)
     }
 
     default:
-        fprintf(self->conf.user_err, "error: cannot get item from %s\n",
+        fprintf(USER_ERR, "error: cannot get item from %s\n",
                 ObjectTypeToString(ObjectGetType(obj)));
         return Error_TypeMismatch;
     }
@@ -780,7 +786,7 @@ static Error SetItem(VirtualMachine* self, Value value, uint8_t arity)
     // TODO: This arity check is not general.
     if (arity != 2)
     {
-        fprintf(self->conf.user_err, "error: wrong number of arguments, expected 1, got %d\n",
+        fprintf(USER_ERR, "error: wrong number of arguments, expected 1, got %d\n",
                 arity);
         return Error_WrongArgumentsCount;
     }
@@ -806,7 +812,7 @@ static Error SetItem(VirtualMachine* self, Value value, uint8_t arity)
         int index = ValueAsInt(arg);
         if (index < 0 || index >= str->length)
         {
-            fprintf(self->conf.user_err, "error: index out of range\n");
+            fprintf(USER_ERR, "error: index out of range\n");
             return Error_OutOfRange;
         }
 
@@ -825,7 +831,7 @@ static Error SetItem(VirtualMachine* self, Value value, uint8_t arity)
     }
 
     default:
-        fprintf(self->conf.user_err, "error: cannot set item of %s\n",
+        fprintf(USER_ERR, "error: cannot set item of %s\n",
                 ObjectTypeToString(ObjectGetType(obj)));
         return Error_TypeMismatch;
     }

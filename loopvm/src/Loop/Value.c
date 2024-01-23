@@ -2,6 +2,8 @@
 
 #include "Object.h"
 
+#include "Objects/String.h"
+
 const char* ValueTypeToString(ValueType self)
 {
     switch (self)
@@ -109,7 +111,7 @@ Object* ValueAsObject(Value self)
     return self.as.object;
 }
 
-void ValuePrint(Value self, FILE* out, PrintFlags flags)
+void ValuePrint(Value self, FILE* out)
 {
     switch (ValueGetType(self))
     {
@@ -123,7 +125,7 @@ void ValuePrint(Value self, FILE* out, PrintFlags flags)
         fprintf(out, "%d", ValueAsInt(self));
         break;
     case ValueType_Object:
-        ObjectPrint(ValueAsObject(self), out, flags);
+        ObjectPrint(ValueAsObject(self), out);
         break;
     }
 }

@@ -3,19 +3,26 @@
 #include "MemoryManager.h"
 #include "VirtualMachine.h"
 
-const char* ObjectTypeToString(ObjectType self)
+#include "Objects/Dictionary.h"
+#include "Objects/Function.h"
+#include "Objects/Module.h"
+#include "Objects/String.h"
+
+Object* ObjectAllocateRaw(VirtualMachine* vm, ObjectType type, size_t size)
 {
-    switch (self)
-    {
-        #define ObjectType_TO_STRING(name) case ObjectType_##name: return #name;
+    Object* obj = MemoryManagerReallocate(&vm->memory_manager, NULL, size, 0);
+    obj->marked = false;
+    obj->type = type;
+    obj->next = vm->memory_manager.objects;
+    vm->memory_manager.objects = obj;
+    return obj;
+}
 
-    ObjectType_LIST(ObjectType_TO_STRING);
-
-        #undef ObjectType_TO_STRING
-
-    default:
-        return "UnknownObjectType";
-    }
+void ObjectFreeRaw(VirtualMachine* vm, Object* obj, size_t size)
+{
+    obj->next = NULL;
+    obj->marked = false;
+    MemoryManagerFree(&vm->memory_manager, obj, size);
 }
 
 Object* ObjectFromJSON(VirtualMachine* vm, ObjectModule* module, const cJSON* json)
@@ -78,13 +85,13 @@ ObjectType_LIST(OBJECT_AS_CONST_IMPL)
 
 #undef OBJECT_AS_CONST_IMPL
 
-void ObjectPrint(const Object* self, FILE* out, PrintFlags flags)
+void ObjectPrint(const Object* self, FILE* out)
 {
     switch (ObjectGetType(self))
     {
         #define OBJECT_PRINT(name) \
                 case ObjectType_##name: \
-                    Object##name##Print(ObjectAs##name##Const(self), out, flags); \
+                    Object##name##Print(ObjectAs##name##Const(self), out); \
                     break;
 
     ObjectType_LIST(OBJECT_PRINT)
@@ -108,238 +115,4 @@ void ObjectFree(Object* self, VirtualMachine* vm)
 
         #undef OBJECT_FREE
     }
-}
-
-static Object* AllocateObjectRaw(VirtualMachine* vm, ObjectType type, size_t size)
-{
-    Object* obj = MemoryManagerReallocate(&vm->memory_manager, NULL, size, 0);
-    obj->marked = false;
-    obj->type = type;
-    obj->next = vm->memory_manager.objects;
-    vm->memory_manager.objects = obj;
-    return obj;
-}
-
-#define ALLOCATE_OBJECT(vm, name) (Object##name*)AllocateObjectRaw(vm, ObjectType_##name, sizeof(Object##name))
-#define FREE_OBJECT(vm, self, name) do \
-    { \
-        self->obj.next = NULL; \
-        self->obj.marked = false; \
-        MemoryManagerFree(&vm->memory_manager, self, sizeof(Object##name)); \
-    } while (false)
-
-ObjectModule* ObjectModuleNew(VirtualMachine* vm, ObjectString* name, ObjectString* path)
-{
-    ObjectModule* obj = ALLOCATE_OBJECT(vm, Module);
-
-    ObjectFunction* script = ObjectFunctionNew(vm, obj, vm->common_strings.script, 0);
-
-    obj->is_partial = true;
-    obj->name = name;
-    obj->path = path;
-    obj->script = script;
-    HashTableInit(&obj->exports);
-    HashTableInit(&obj->globals);
-
-    return obj;
-}
-
-ObjectModule* ObjectModuleFromJSON(VirtualMachine* vm, ObjectModule* _module, const cJSON* data)
-{
-    assert(cJSON_IsObject(data));
-
-    const cJSON* name_json = cJSON_GetObjectItemCaseSensitive(data, "name");
-    ObjectString* name = ObjectStringFromJSON(vm, NULL, name_json);
-
-    const cJSON* path_json = cJSON_GetObjectItemCaseSensitive(data, "path");
-    ObjectString* path = ObjectStringFromJSON(vm, NULL, path_json);
-
-    ObjectModule* module = ObjectModuleNew(vm, name, path);
-    bool put_res = HashTablePut(&vm->modules, vm, ValueObject((Object*)module->name), ValueObject((Object*)module));
-    assert(put_res);
-
-    const cJSON* chunk_json = cJSON_GetObjectItemCaseSensitive(data, "chunk");
-    ChunkFromJSON(&module->script->chunk, vm, module, chunk_json);
-
-    return module;
-}
-
-void ObjectModuleFree(ObjectModule* self, VirtualMachine* vm)
-{
-    self->name = NULL;
-    self->path = NULL;
-    self->script = NULL;
-    HashTableDeinit(&self->exports, vm);
-    HashTableDeinit(&self->globals, vm);
-    FREE_OBJECT(vm, self, Module);
-}
-
-void ObjectModulePrint(const ObjectModule* self, FILE* out, PrintFlags flags)
-{
-    fprintf(out, "<module at 0x%p>", self);
-}
-
-ObjectString* ObjectStringNew(VirtualMachine* vm, char* str, size_t length, size_t hash)
-{
-    ObjectString* interned = NULL;
-    if (HashTableGetStringKey(&vm->strings, str, length, hash, &interned))
-    {
-        MemoryManagerFree(&vm->memory_manager, str, length + 1);
-        return interned;
-    }
-
-    ObjectString* obj = ALLOCATE_OBJECT(vm, String);
-    obj->str = str;
-    obj->length = length;
-    obj->hash = hash;
-
-    Object* bare = (Object*)obj;
-    HashTablePut(&vm->strings, vm, ValueObject(bare), ValueObject(bare));
-
-    return obj;
-}
-
-ObjectString* ObjectStringFromLiteral(VirtualMachine* vm, const char* str)
-{
-    size_t length = strlen(str);
-    char* new_str = MemoryManagerAllocate(&vm->memory_manager, length + 1);
-    strcpy(new_str, str);
-
-    return ObjectStringNew(vm, new_str, length, CalculateStringHash(str, length));
-}
-
-ObjectString* ObjectStringFromJSON(VirtualMachine* vm, ObjectModule* module, const cJSON* data)
-{
-    assert(cJSON_IsString(data));
-
-    const size_t length = strlen(data->valuestring);
-    const size_t hash = CalculateStringHash(data->valuestring, length);
-
-    char* new_str = MemoryManagerAllocate(&vm->memory_manager, length + 1);
-    strcpy(new_str, data->valuestring);
-
-    return ObjectStringNew(vm, new_str, length, hash);
-}
-
-void ObjectStringFree(ObjectString* self, VirtualMachine* vm)
-{
-    MemoryManagerFree(&vm->memory_manager, self->str, self->length + 1);
-    self->hash = 0;
-    self->length = 0;
-    self->str = NULL;
-    FREE_OBJECT(vm, self, String);
-}
-
-void ObjectStringPrint(const ObjectString* self, FILE* out, PrintFlags flags)
-{
-    switch (flags)
-    {
-    case PrintFlags_Debug:
-        // TODO: ObjectStringPrint with PrintFlags_debug escaped characters.
-        fprintf(out, "\"%s\"", self->str);
-        break;
-    case PrintFlags_Pretty:
-        fprintf(out, "%s", self->str);
-        break;
-    }
-}
-
-size_t CalculateStringHash(const char* str, size_t length)
-{
-    // TODO: That's not right.
-
-    uint32_t hash = 2166136261u;
-
-    for (int i = 0; i < length; i++)
-    {
-        hash ^= str[i];
-        hash *= 16777619;
-    }
-
-    return hash;
-}
-
-ObjectFunction* ObjectFunctionNew(VirtualMachine* vm, ObjectModule* module, ObjectString* name, size_t arity)
-{
-    ObjectFunction* obj = ALLOCATE_OBJECT(vm, Function);
-    obj->module = module;
-    obj->name = name;
-    obj->arity = arity;
-    ChunkInit(&obj->chunk);
-    return obj;
-}
-
-ObjectFunction* ObjectFunctionFromJSON(VirtualMachine* vm, ObjectModule* module, const cJSON* data)
-{
-    assert(cJSON_IsObject(data));
-
-    const cJSON* name_json = cJSON_GetObjectItemCaseSensitive(data, "name");
-    ObjectString* name = ObjectStringFromJSON(vm, module, name_json);
-
-    const cJSON* arity_json = cJSON_GetObjectItemCaseSensitive(data, "arity");
-    assert(cJSON_IsNumber(arity_json));
-    const uint8_t arity = arity_json->valueint;
-
-    const cJSON* chunk_json = cJSON_GetObjectItemCaseSensitive(data, "chunk");
-
-    ObjectFunction* obj = ObjectFunctionNew(vm, module, name, arity);
-    ChunkFromJSON(&obj->chunk, vm, module, chunk_json);
-
-    return obj;
-}
-
-void ObjectFunctionFree(ObjectFunction* self, VirtualMachine* vm)
-{
-    self->module = NULL;
-    self->name = NULL;
-    self->arity = 0;
-    ChunkDeinit(&self->chunk, vm);
-    FREE_OBJECT(vm, self, Function);
-}
-
-void ObjectFunctionPrint(const ObjectFunction* self, FILE* out, PrintFlags flags)
-{
-    fprintf(out, "<function %s.%s>", self->module->name->str, self->name->str);
-}
-
-ObjectDictionary* ObjectDictionaryNew(VirtualMachine* vm)
-{
-    ObjectDictionary* obj = ALLOCATE_OBJECT(vm, Dictionary);
-    HashTableInit(&obj->entries);
-    return obj;
-}
-
-ObjectDictionary* ObjectDictionaryFromJSON(VirtualMachine* vm, ObjectModule* module, const cJSON* data)
-{
-    assert(cJSON_IsObject(data));
-
-    ObjectDictionary* obj = ObjectDictionaryNew(vm);
-
-    const cJSON* entry = NULL;
-    cJSON_ArrayForEach(entry, data)
-    {
-        assert(cJSON_IsObject(entry));
-
-        const cJSON* key_json = cJSON_GetObjectItemCaseSensitive(entry, "key");
-        const cJSON* value_json = cJSON_GetObjectItemCaseSensitive(entry, "value");
-
-        Value key = ValueFromJSON(vm, module, key_json);
-        Value value = ValueFromJSON(vm, module, value_json);
-
-        HashTablePut(&obj->entries, vm, key, value);
-    }
-
-    return obj;
-}
-
-void ObjectDictionaryFree(ObjectDictionary* self, VirtualMachine* vm)
-{
-    HashTableDeinit(&self->entries, vm);
-    FREE_OBJECT(vm, self, Dictionary);
-}
-
-void ObjectDictionaryPrint(const ObjectDictionary* self, FILE* out, PrintFlags flags)
-{
-    // TODO: Dictionary print and custom objects.
-    HashTablePrint(&self->entries, out, flags);
 }

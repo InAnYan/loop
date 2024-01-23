@@ -20,13 +20,21 @@ add_executable(loopvm
         src/Loop/Common.h
         src/Loop/MemoryManager.h
         src/Loop/MemoryManager.c
-        src/Loop/PrintFlags.h
         src/libs/cJSON/cJSON.h
-        src/libs/cJSON/cJSON.c
         src/libs/cJSON/cJSON.c
         src/Loop/Error.h
         src/Loop/Error.c
         src/Loop/Util.h
         src/Loop/Util.c
+        src/Loop/Objects/Module.h
+        src/Loop/Objects/String.h
+        src/Loop/Objects/Function.h
+        src/Loop/Objects/Dictionary.h
+        src/Loop/ObjectType.h
+        src/Loop/Objects/String.c
+        src/Loop/ObjectType.c
+        src/Loop/Objects/Module.c
+        src/Loop/Objects/Function.c
+        src/Loop/Objects/Dictionary.c
 )
-target_include_directories(loopvm PRIVATE src/)
+target_include_directories(loopvm PRIVATE src/libs)

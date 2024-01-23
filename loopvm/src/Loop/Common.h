@@ -9,10 +9,9 @@
 #include <string.h>
 #include <assert.h>
 
-#include "PrintFlags.h"
 #include "Error.h"
 
-#include "libs/cJSON/cJSON.h"
+#include "cJSON/cJSON.h"
 
 #define VM_STACK_SIZE_PER_FRAME 256
 #define VM_FRAMES_COUNT 64
@@ -23,6 +22,13 @@
 #define HASH_TABLE_MAX_LOAD_FACTOR 0.75
 
 #define DEBUG_MODE
+
+// In future, the better idea is to have a VirtualMachineConfiguration struct.
+
+#define USER_OUT stdout
+#define USER_IN stdin
+#define USER_ERR stderr
+#define DEBUG_OUT stderr
 
 #define FORWARD_DECL(name) typedef struct name name
 
