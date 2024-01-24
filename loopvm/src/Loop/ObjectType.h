@@ -5,7 +5,10 @@
     o(String) \
     o(Function) \
     o(Module) \
-    o(Dictionary)
+    o(Dictionary) \
+    o(Class) \
+    o(Instance) \
+    o(BoundMethod)
 
 typedef enum ObjectType
 {

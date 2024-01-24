@@ -8,14 +8,13 @@
     o(StackOverflow) \
     o(StackUnderflow) \
     o(VariableRedefinition) \
-    o(UndefinedVariable) \
+    o(UndefinedReference) \
     o(NonCallable) \
     o(WrongArgumentsCount) \
     o(IOError) \
     o(TypeMismatch) \
     o(ZeroDivision) \
     o(InvalidJSON) \
-    o(UndefinedExport) \
     o(FileNotFound) \
     o(OutOfRange)
 
@@ -29,5 +28,7 @@ typedef enum Error
 } Error;
 
 const char* ErrorToString(Error value);
+
+#define TRY(expr) do { Error error = expr; if (error != Error_None) { return error; } } while (0)
 
 #endif // LOOP_ERROR_H

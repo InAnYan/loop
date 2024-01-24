@@ -18,7 +18,7 @@ ObjectFunction* ObjectFunctionFromJSON(VirtualMachine* vm, ObjectModule* module,
     assert(cJSON_IsObject(data));
 
     const cJSON* name_json = cJSON_GetObjectItemCaseSensitive(data, "name");
-    ObjectString* name = ObjectStringFromJSON(vm, module, name_json);
+    ObjectString* name = ObjectStringFromJSON(vm, name_json);
 
     const cJSON* arity_json = cJSON_GetObjectItemCaseSensitive(data, "arity");
     assert(cJSON_IsNumber(arity_json));
@@ -28,6 +28,11 @@ ObjectFunction* ObjectFunctionFromJSON(VirtualMachine* vm, ObjectModule* module,
 
     ObjectFunction* obj = ObjectFunctionNew(vm, module, name, arity);
     ChunkFromJSON(&obj->chunk, vm, module, chunk_json);
+
+    #ifdef DISASM_FUNC_AFTER_READING
+    ChunkDisassemble(&obj->chunk, DEBUG_OUT, name->str);
+    fprintf(DEBUG_OUT, "\n");
+    #endif
 
     return obj;
 }

@@ -24,8 +24,6 @@ add_executable(loopvm
         src/libs/cJSON/cJSON.c
         src/Loop/Error.h
         src/Loop/Error.c
-        src/Loop/Util.h
-        src/Loop/Util.c
         src/Loop/Objects/Module.h
         src/Loop/Objects/String.h
         src/Loop/Objects/Function.h
@@ -36,5 +34,22 @@ add_executable(loopvm
         src/Loop/Objects/Module.c
         src/Loop/Objects/Function.c
         src/Loop/Objects/Dictionary.c
+        src/Loop/Objects/Class.c
+        src/Loop/Objects/Instance.h
+        src/Loop/Objects/Instance.c
+        src/Loop/Objects/BoundMethod.h
+        src/Loop/Objects/BoundMethod.c
+        src/Loop/Filesystem.h
+        src/Loop/Filesystem_UNIX.c
+        src/Loop/Filesystem.c
+        src/Loop/Filesystem_WINDOWS.c
 )
 target_include_directories(loopvm PRIVATE src/libs)
+
+if(WIN32)
+    add_compile_definitions(LOOP_COMPILE_WINDOWS)
+endif (WIN32)
+
+if(UNIX)
+    add_compile_definitions(LOOP_COMPILE_UNIX)
+endif (UNIX)

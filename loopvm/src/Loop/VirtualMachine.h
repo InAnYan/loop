@@ -14,29 +14,31 @@ typedef struct CallFrame
     Value* locals;
 } CallFrame;
 
-typedef struct CommonStrings
+typedef struct CommonObjects
 {
     ObjectString* script;
-} CommonStrings;
-
-void CommonStringsInit(CommonStrings* self, VirtualMachine* vm);
+    ObjectString* init;
+    ObjectString* empty_string;
+} CommonObjects;
 
 typedef struct VirtualMachine
 {
     MemoryManager memory_manager;
-    CommonStrings common_strings;
+    CommonObjects common;
     Value stack[VM_STACK_SIZE_PER_FRAME * VM_FRAMES_COUNT];
     Value* stack_ptr;
     CallFrame frames[VM_FRAMES_COUNT];
     CallFrame* frame_ptr;
     HashTable strings;
     HashTable modules;
+    ObjectString* called_path;
+    ObjectString* packages_path;
 } VirtualMachine;
 
-void VirtualMachineInit(VirtualMachine* self);
+Error VirtualMachineInit(VirtualMachine* self);
 void VirtualMachineDeinit(VirtualMachine* self);
 /// Do not forget to run the script.
-Error VirtualMachineLoadModule(VirtualMachine* self, ObjectString* path, ObjectModule** ptr);
+Error VirtualMachineLoadModule(VirtualMachine* self, ObjectString* parent, ObjectString* path, ObjectModule** ptr);
 Error VirtualMachineRunScript(VirtualMachine* self, ObjectFunction* script);
 
 #endif // LOOP_VIRTUALMACHINE_H

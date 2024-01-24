@@ -17,7 +17,7 @@
 #define VM_FRAMES_COUNT 64
 #define VM_TRACE_EXECUTION
 
-#define DISASM_CHUNKS_AFTER_READING
+#define DISASM_FUNC_AFTER_READING
 
 #define HASH_TABLE_MAX_LOAD_FACTOR 0.75
 
@@ -40,5 +40,8 @@ FORWARD_DECL(ObjectString);
 FORWARD_DECL(ObjectFunction);
 FORWARD_DECL(ObjectModule);
 FORWARD_DECL(ObjectDictionary);
+FORWARD_DECL(ObjectClass);
+FORWARD_DECL(ObjectInstance);
+FORWARD_DECL(ObjectBoundMethod);
 
 #endif // LOOP_CONFIGURATION_H

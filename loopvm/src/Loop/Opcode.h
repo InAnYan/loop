@@ -37,7 +37,8 @@
     o(ModuleEnd, Simple) \
     o(BuildDictionary, Byte) \
     o(GetItem, Byte) \
-    o(SetItem, Byte)
+    o(SetItem, Byte) \
+    o(SetAttribute, Constant)
 
 typedef enum Opcode
 {

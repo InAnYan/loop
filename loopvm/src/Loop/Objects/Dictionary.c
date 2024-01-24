@@ -7,7 +7,8 @@ ObjectDictionary* ObjectDictionaryNew(VirtualMachine* vm)
     return obj;
 }
 
-ObjectDictionary* ObjectDictionaryFromJSON(VirtualMachine* vm, ObjectModule* module, const cJSON* data)
+/*
+ObjectDictionary* ObjectDictionaryFromJSON(VirtualMachine* vm, ObjectString* module_path, ObjectModule* module, const cJSON* data)
 {
     assert(cJSON_IsObject(data));
 
@@ -29,6 +30,7 @@ ObjectDictionary* ObjectDictionaryFromJSON(VirtualMachine* vm, ObjectModule* mod
 
     return obj;
 }
+*/
 
 void ObjectDictionaryFree(ObjectDictionary* self, VirtualMachine* vm)
 {

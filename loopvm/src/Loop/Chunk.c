@@ -62,11 +62,6 @@ void ChunkFromJSON(Chunk* self, VirtualMachine* vm, ObjectModule* module, const 
         assert(cJSON_IsNumber(line));
         PushLine(self, vm, line->valueint);
     }
-
-    #ifdef DISASM_CHUNKS_AFTER_READING
-    ChunkDisassemble(self, DEBUG_OUT, "<json>");
-    fprintf(DEBUG_OUT, "\n");
-    #endif
 }
 
 // Oh, no. Code duplication.

@@ -35,6 +35,7 @@ typedef struct Value
     ValueUnion as;
 } Value;
 
+/// Use this function with caution. module_path will be set to NULL.
 Value ValueFromJSON(VirtualMachine* vm, ObjectModule* module, const cJSON* json);
 
 Value ValueNull();

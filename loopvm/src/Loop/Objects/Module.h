@@ -10,16 +10,16 @@ typedef struct ObjectModule
 {
     Object obj;
     ObjectString* name;
-    ObjectString* path;
+    ObjectString* parent_dir;
     ObjectFunction* script;
     HashTable exports;
     HashTable globals;
     bool is_partial;
 } ObjectModule;
 
-ObjectModule* ObjectModuleNew(VirtualMachine* vm, ObjectString* name, ObjectString* path);
+ObjectModule* ObjectModuleNew(VirtualMachine* vm, ObjectString* name, ObjectString* parent_dir);
 /// module can be NULL.
-ObjectModule* ObjectModuleFromJSON(VirtualMachine* vm, ObjectModule* module, const cJSON* data);
+ObjectModule* ObjectModuleFromJSON(VirtualMachine* vm, ObjectString* path, const cJSON* data);
 void ObjectModuleFree(ObjectModule* self, VirtualMachine* vm);
 
 void ObjectModulePrint(const ObjectModule* self, FILE* out);

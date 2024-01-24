@@ -128,6 +128,11 @@ void HashTableAddAll(HashTable* self, VirtualMachine* vm, HashTable* other)
 
 bool HashTableGet(HashTable* self, Value key, Value* value)
 {
+    if (self->count == 0)
+    {
+        return false;
+    }
+
     HashTableEntry* entry = FindEntry(self->entries, self->capacity, key);
 
     if (ValueIsNull(entry->key))

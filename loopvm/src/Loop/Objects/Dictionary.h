@@ -13,7 +13,6 @@ typedef struct ObjectDictionary
 } ObjectDictionary;
 
 ObjectDictionary* ObjectDictionaryNew(VirtualMachine* vm);
-ObjectDictionary* ObjectDictionaryFromJSON(VirtualMachine* vm, ObjectModule* module, const cJSON* data);
 void ObjectDictionaryFree(ObjectDictionary* self, VirtualMachine* vm);
 
 void ObjectDictionaryPrint(const ObjectDictionary* self, FILE* out);

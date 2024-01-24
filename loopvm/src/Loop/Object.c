@@ -7,6 +7,9 @@
 #include "Objects/Function.h"
 #include "Objects/Module.h"
 #include "Objects/String.h"
+#include "Objects/Class.h"
+#include "Objects/Instance.h"
+#include "Objects/BoundMethod.h"
 
 Object* ObjectAllocateRaw(VirtualMachine* vm, ObjectType type, size_t size)
 {
@@ -35,15 +38,20 @@ Object* ObjectFromJSON(VirtualMachine* vm, ObjectModule* module, const cJSON* js
     assert(cJSON_IsString(type));
     const char* type_string = type->valuestring;
 
-    #define OBJECT_FROM_JSON(name) \
-    if (strcmp(type_string, #name) == 0) \
-    { \
-        return (Object*)Object##name##FromJSON(vm, module, data); \
+    if (strcmp(type_string, "String") == 0)
+    {
+        return (Object*)ObjectStringFromJSON(vm, data);
     }
 
-    ObjectType_LIST(OBJECT_FROM_JSON);
+    if (strcmp(type_string, "Function") == 0)
+    {
+        return (Object*)ObjectFunctionFromJSON(vm, module, data);
+    }
 
-    #undef OBJECT_FROM_JSON
+    if (strcmp(type_string, "Class") == 0)
+    {
+        return (Object*)ObjectClassFromJSON(vm, module, data);
+    }
 
     assert(false && "Invalid JSON");
 }

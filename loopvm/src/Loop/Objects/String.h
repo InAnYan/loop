@@ -14,11 +14,12 @@ typedef struct ObjectString
 
 ObjectString* ObjectStringNew(VirtualMachine* vm, char* str, size_t length, size_t hash);
 ObjectString* ObjectStringFromLiteral(VirtualMachine* vm, const char* str);
-/// module can be NULL.
-ObjectString* ObjectStringFromJSON(VirtualMachine* vm, ObjectModule* module, const cJSON* data);
+ObjectString* ObjectStringFromJSON(VirtualMachine* vm, const cJSON* data);
 void ObjectStringFree(ObjectString* self, VirtualMachine* vm);
 
 size_t CalculateStringHash(const char* str, size_t length);
+ObjectString* ObjectStringConcatenate(VirtualMachine* vm, const ObjectString* left, const ObjectString* right);
+ObjectString* ObjectStringSubstring(VirtualMachine* vm, ObjectString* str, size_t start, size_t end);
 
 void ObjectStringPrint(const ObjectString* self, FILE* out);
 
