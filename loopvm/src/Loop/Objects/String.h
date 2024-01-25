@@ -23,4 +23,6 @@ ObjectString* ObjectStringSubstring(VirtualMachine* vm, ObjectString* str, size_
 
 void ObjectStringPrint(const ObjectString* self, FILE* out);
 
+void ObjectStringMarkTraverse(ObjectString* self, MemoryManager* memory);
+
 #endif // LOOP_OBJECTS_STRING_H

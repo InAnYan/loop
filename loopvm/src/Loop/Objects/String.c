@@ -104,3 +104,8 @@ ObjectString* ObjectStringSubstring(VirtualMachine* vm, ObjectString* str, size_
     str_sub[length] = '\0';
     return ObjectStringNew(vm, str_sub, length, CalculateStringHash(str_sub, length));
 }
+
+void ObjectStringMarkTraverse(ObjectString* self, MemoryManager* memory)
+{
+
+}

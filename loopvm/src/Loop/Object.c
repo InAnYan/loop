@@ -18,11 +18,22 @@ Object* ObjectAllocateRaw(VirtualMachine* vm, ObjectType type, size_t size)
     obj->type = type;
     obj->next = vm->memory_manager.objects;
     vm->memory_manager.objects = obj;
+
+    #ifdef LOG_GC
+    fprintf(DEBUG_OUT, "-- Alloc: %zu bytes of %s - %p\n",
+            size, ObjectTypeToString(type), obj);
+    #endif
+
     return obj;
 }
 
 void ObjectFreeRaw(VirtualMachine* vm, Object* obj, size_t size)
 {
+    #ifdef LOG_GC
+    fprintf(DEBUG_OUT, "-- Free: %s - %p\n",
+            ObjectTypeToString(obj->type), obj);
+    #endif
+
     obj->next = NULL;
     obj->marked = false;
     MemoryManagerFree(&vm->memory_manager, obj, size);
@@ -122,5 +133,57 @@ void ObjectFree(Object* self, VirtualMachine* vm)
     ObjectType_LIST(OBJECT_FREE)
 
         #undef OBJECT_FREE
+    }
+}
+
+void ObjectMark(Object* self, MemoryManager* memory)
+{
+    assert(self != NULL);
+
+    if (self->marked)
+    {
+        return;
+    }
+
+    #ifdef LOG_GC
+    fprintf(DEBUG_OUT, "-- Mark: %p - ", self);
+    ObjectPrint(self, DEBUG_OUT);
+    fprintf(DEBUG_OUT, "\n");
+    #endif
+
+    self->marked = true;
+
+    // Not really cool if Object is responsible for adding
+    // itself to the working list of the Memory.
+
+    if (memory->gray_stack_count + 1 > memory->gray_stack_capacity)
+    {
+        memory->gray_stack_capacity = GROW_CAPACITY(memory->gray_stack_capacity);
+        memory->gray_stack = (Object**)realloc(memory->gray_stack, sizeof(Object*) * memory->gray_stack_capacity);
+
+        if (memory->gray_stack == NULL)
+        {
+            fprintf(stderr, "FATAL ERROR: out of memory\n");
+            exit(1);
+        }
+    }
+
+    memory->gray_stack[memory->gray_stack_count++] = self;
+}
+
+void ObjectMarkTraverse(Object* self, MemoryManager* memory)
+{
+    assert(self != NULL);
+
+    switch (ObjectGetType(self))
+    {
+        #define OBJECT_MARK_TRAVERSE(name) \
+                case ObjectType_##name: \
+                    Object##name##MarkTraverse(ObjectAs##name(self), memory); \
+                    break;
+
+    ObjectType_LIST(OBJECT_MARK_TRAVERSE)
+
+        #undef OBJECT_MARK_TRAVERSE
     }
 }

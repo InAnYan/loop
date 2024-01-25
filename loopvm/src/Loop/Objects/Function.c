@@ -50,3 +50,10 @@ void ObjectFunctionPrint(const ObjectFunction* self, FILE* out)
 {
     fprintf(out, "<function %s.%s>", self->module->name->str, self->name->str);
 }
+
+void ObjectFunctionMarkTraverse(ObjectFunction* self, MemoryManager* memory)
+{
+    ObjectMark((Object*)self->module, memory);
+    ObjectMark((Object*)self->name, memory);
+    ChunkMarkTraverse(&self->chunk, memory);
+}

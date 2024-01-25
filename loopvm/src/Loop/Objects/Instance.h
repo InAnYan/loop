@@ -18,4 +18,6 @@ void ObjectInstanceFree(ObjectInstance* self, VirtualMachine* vm);
 
 void ObjectInstancePrint(const ObjectInstance* self, FILE* out);
 
+void ObjectInstanceMarkTraverse(ObjectInstance* self, MemoryManager* memory);
+
 #endif // LOOP_OBJECTS_INSTANCE_H

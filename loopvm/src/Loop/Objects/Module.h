@@ -6,6 +6,13 @@
 
 #include "../HashTable.h"
 
+typedef enum ObjectModuleState
+{
+    ObjectModuleState_ScriptNotExecuted,
+    ObjectModuleState_ScriptRunning,
+    ObjectModuleState_ScriptExecuted,
+} ObjectModuleState;
+
 typedef struct ObjectModule
 {
     Object obj;
@@ -14,7 +21,7 @@ typedef struct ObjectModule
     ObjectFunction* script;
     HashTable exports;
     HashTable globals;
-    bool is_partial;
+    ObjectModuleState state;
 } ObjectModule;
 
 ObjectModule* ObjectModuleNew(VirtualMachine* vm, ObjectString* name, ObjectString* parent_dir);
@@ -23,5 +30,7 @@ ObjectModule* ObjectModuleFromJSON(VirtualMachine* vm, ObjectString* path, const
 void ObjectModuleFree(ObjectModule* self, VirtualMachine* vm);
 
 void ObjectModulePrint(const ObjectModule* self, FILE* out);
+
+void ObjectModuleMarkTraverse(ObjectModule* self, MemoryManager* memory);
 
 #endif // LOOP_OBJECTS_MODULE_H

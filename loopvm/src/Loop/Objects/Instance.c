@@ -26,3 +26,9 @@ void ObjectInstancePrint(const ObjectInstance* self, FILE* out)
     fprintf(out, "<instance of %s.%s>",
             self->klass->module->name->str, self->klass->name->str);
 }
+
+void ObjectInstanceMarkTraverse(ObjectInstance* self, MemoryManager* memory)
+{
+    ObjectMark((Object*)self->klass, memory);
+    HashTableMark(&self->fields, memory);
+}

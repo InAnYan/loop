@@ -16,7 +16,8 @@
     o(ZeroDivision) \
     o(InvalidJSON) \
     o(FileNotFound) \
-    o(OutOfRange)
+    o(OutOfRange) \
+    o(CircularImport)
 
 typedef enum Error
 {

@@ -29,6 +29,7 @@ void CommonObjectsDeinit(CommonObjects* self)
 Error VirtualMachineInit(VirtualMachine* self)
 {
     MemoryManagerInit(&self->memory_manager, self); // Potential bug, if conf is not set in VM.
+    self->memory_manager.on = false;
     self->stack_ptr = self->stack;
     self->frame_ptr = self->frames;
     HashTableInit(&self->strings);
@@ -51,6 +52,7 @@ Error VirtualMachineInit(VirtualMachine* self)
 
     self->packages_path = ObjectStringFromLiteral(self, packages_path);
 
+    self->memory_manager.on = false;
     return Error_None;
 }
 
@@ -71,6 +73,7 @@ static Error PushFrame(VirtualMachine* self, ObjectFunction* function);
 static Error PopFrame(VirtualMachine* self);
 
 static Value StackPeek(VirtualMachine* self);
+static void StackPeekSet(VirtualMachine* self, Value value);
 static Value StackPeekAt(VirtualMachine* self, size_t offset);
 static Value StackPop(VirtualMachine* self);
 static void StackPush(VirtualMachine* self, Value value);
@@ -98,15 +101,18 @@ static Error BinOp(VirtualMachine* self, BinaryOp op);
 static Error Call(VirtualMachine* self, Value value, uint8_t arity);
 static Error GetItem(VirtualMachine* self, Value value, uint8_t arity);
 static Error SetItem(VirtualMachine* self, Value value, uint8_t arity);
-static Error GetAttribute(VirtualMachine* self, Value value, Value key);
-static Error SetAttribute(VirtualMachine* self, Value value, Value key, Value instance);
+static Error GetAttribute(VirtualMachine* self, Value from, Value attr);
+static Error SetAttribute(VirtualMachine* self, Value instance, Value key, Value value);
 
 static Error Run(VirtualMachine* self);
 
 Error VirtualMachineRunScript(VirtualMachine* self, ObjectFunction* script)
 {
+    self->memory_manager.on = true;
     TRY(PushScript(self, script));
-    return Run(self);
+    TRY(Run(self));
+    self->memory_manager.on = false;
+    return Error_None;
 }
 
 static bool InternModule(VirtualMachine* self, ObjectString* path, ObjectModule** ptr);
@@ -247,16 +253,16 @@ Error Run(VirtualMachine* self)
 
         case Opcode_Negate:
         {
-            Value value = StackPop(self);
+            Value value = StackPeek(self);
             CHECK_VALUE_TYPE(self, value, Int);
-            StackPush(self, ValueInt(-ValueAsInt(value)));
+            StackPeekSet(self, ValueInt(-ValueAsInt(value)));
             break;
         }
 
         case Opcode_Not:
         {
-            Value value = StackPop(self);
-            StackPush(self, ValueBool(ValueIsFalse(value)));
+            Value value = StackPeek(self);
+            StackPeekSet(self, ValueBool(ValueIsFalse(value)));
             break;
         }
 
@@ -280,8 +286,8 @@ Error Run(VirtualMachine* self)
         {
             // TODO: Objects custom equality.
             Value b = StackPop(self);
-            Value a = StackPop(self);
-            StackPush(self, ValueBool(ValueAreEqual(a, b)));
+            Value a = StackPeek(self);
+            StackPeekSet(self, ValueBool(ValueAreEqual(a, b)));
             break;
         }
 
@@ -327,9 +333,10 @@ Error Run(VirtualMachine* self)
         case Opcode_Print:
         {
             // TODO: Objects custom printing.
-            Value value = StackPop(self);
+            Value value = StackPeek(self);
             ValuePrint(value, USER_OUT);
             fprintf(USER_OUT, "\n");
+            StackPop(self);
             break;
         }
 
@@ -341,7 +348,7 @@ Error Run(VirtualMachine* self)
 
         case Opcode_DefineGlobal:
         {
-            Value value = StackPop(self);
+            Value value = StackPeek(self);
             Value key = ReadConstant(frame); // The compiler is responsible for correctness.
 
             if (!HashTablePut(GetGlobals(frame), self, key, value))
@@ -351,6 +358,8 @@ Error Run(VirtualMachine* self)
                         ObjectAsString(ValueAsObject(key))->str);
                 return Error_VariableRedefinition;
             }
+
+            StackPop(self);
 
             break;
         }
@@ -437,7 +446,7 @@ Error Run(VirtualMachine* self)
 
         case Opcode_Export:
         {
-            Value value = StackPop(self);
+            Value value = StackPeek(self);
             Value key = ReadConstant(frame);
 
             if (!HashTablePut(GetGlobals(frame), self, key, value))
@@ -456,6 +465,8 @@ Error Run(VirtualMachine* self)
                 return Error_VariableRedefinition;
             }
 
+            StackPop(self);
+
             break;
         }
 
@@ -468,17 +479,27 @@ Error Run(VirtualMachine* self)
             ObjectString* str = ObjectAsString(ValueAsObject(key));
 
             ObjectModule* module = NULL;
-            TRY(VirtualMachineLoadModule(self, frame->function->module->parent_dir, str, &module));
 
-            if (module->is_partial)
+            self->memory_manager.on = false;
+            TRY(VirtualMachineLoadModule(self, frame->function->module->parent_dir, str, &module));
+            self->memory_manager.on = true;
+
+            if (module->state == ObjectModuleState_ScriptNotExecuted)
             {
+                module->state = ObjectModuleState_ScriptRunning;
                 TRY(PushScript(self, module->script));
+            }
+            else if (module->state == ObjectModuleState_ScriptRunning)
+            {
+                // TODO: Better error message.
+                fprintf(USER_ERR, "error: circular import: '%s'\n", str->str);
+                return Error_CircularImport;
             }
 
             break;
         }
 
-        case Opcode_Top:
+        case Opcode_Top: // TODO: Delete? I don't use it, probably.
         {
             StackPush(self, StackPeek(self));
             break;
@@ -486,10 +507,10 @@ Error Run(VirtualMachine* self)
 
         case Opcode_GetAttribute:
         {
-            Value key = ReadConstant(frame);
-            Value value = StackPop(self);
+            Value attr = ReadConstant(frame);
+            Value from = StackPop(self); // Pop, because GetAttribute only gets.
 
-            TRY(GetAttribute(self, value, key));
+            TRY(GetAttribute(self, from, attr));
 
             break;
         }
@@ -497,10 +518,10 @@ Error Run(VirtualMachine* self)
         case Opcode_SetAttribute:
         {
             Value key = ReadConstant(frame);
-            Value value = StackPop(self);
-            Value instance = StackPop(self);
+            Value value = StackPeek(self);
+            Value instance = StackPeekAt(self, 1);
 
-            TRY(SetAttribute(self, value, key, instance));
+            TRY(SetAttribute(self, instance, key, value));
 
             break;
         }
@@ -512,7 +533,7 @@ Error Run(VirtualMachine* self)
 
             StackPop(self);
 
-            frame->function->module->is_partial = false;
+            frame->function->module->state = ObjectModuleState_ScriptExecuted;
             Value module = ValueObject((Object*)frame->function->module);
 
             TRY(PopFrame(self));
@@ -530,14 +551,20 @@ Error Run(VirtualMachine* self)
         case Opcode_BuildDictionary:
         {
             uint8_t count = ReadByte(frame);
+            assert(count % 2 == 0);
 
             ObjectDictionary* obj = ObjectDictionaryNew(self);
 
-            for (int i = 0; i < count; ++i)
+            for (int i = 0; i < count; i += 2)
             {
-                Value value = StackPop(self);
-                Value key = StackPop(self);
+                Value value = StackPeekAt(self, i);
+                Value key = StackPeekAt(self, i + 1);
                 HashTablePut(&obj->entries, self, key, value);
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                StackPop(self);
             }
 
             StackPush(self, ValueObject((Object*)obj));
@@ -593,6 +620,12 @@ static Value StackPeek(VirtualMachine* self)
 {
     assert(self->stack_ptr != self->stack);
     return self->stack_ptr[-1];
+}
+
+static void StackPeekSet(VirtualMachine* self, Value value)
+{
+    assert(self->stack_ptr != self->stack);
+    self->stack_ptr[-1] = value;
 }
 
 static Value StackPeekAt(VirtualMachine* self, size_t offset)
@@ -660,6 +693,7 @@ static void TraceStack(VirtualMachine* self)
 
 static Error BinOp(VirtualMachine* self, BinaryOp op)
 {
+    // TODO: Operator overload.
     Value b = StackPop(self);
     Value a = StackPop(self);
 
@@ -770,14 +804,14 @@ static Error Call(VirtualMachine* self, Value value, uint8_t arity)
 
 static Error GetObjectAttribute(VirtualMachine* self, Object* obj, Value key);
 
-static Error GetAttribute(VirtualMachine* self, Value value, Value key)
+static Error GetAttribute(VirtualMachine* self, Value from, Value attr)
 {
-    switch (ValueGetType(value))
+    switch (ValueGetType(from))
     {
     case ValueType_Object:
-        return GetObjectAttribute(self, ValueAsObject(value), key);
+        return GetObjectAttribute(self, ValueAsObject(from), attr);
     default:
-        fprintf(USER_ERR, "error: cannot get attribute from %s\n", ValueTypeToString(ValueGetType(value)));
+        fprintf(USER_ERR, "error: cannot get attribute from %s\n", ValueTypeToString(ValueGetType(from)));
         return Error_TypeMismatch;
     }
 }
@@ -832,21 +866,21 @@ static Error GetObjectAttribute(VirtualMachine* self, Object* obj, Value key)
     }
 }
 
-static Error SetObjectAttribute(VirtualMachine* self, Value value, Value key, Object* instance);
+static Error SetObjectAttribute(VirtualMachine* self, Object* instance, Value key, Value value);
 
-static Error SetAttribute(VirtualMachine* self, Value value, Value key, Value instance)
+static Error SetAttribute(VirtualMachine* self, Value instance, Value key, Value value)
 {
     switch (ValueGetType(instance))
     {
     case ValueType_Object:
-        return SetObjectAttribute(self, value, key, ValueAsObject(instance));
+        return SetObjectAttribute(self, ValueAsObject(instance), key, value);
     default:
         fprintf(USER_ERR, "error: cannot set attribute for %s\n", ValueTypeToString(ValueGetType(instance)));
         return Error_TypeMismatch;
     }
 }
 
-static Error SetObjectAttribute(VirtualMachine* self, Value value, Value key, Object* instance)
+static Error SetObjectAttribute(VirtualMachine* self, Object* instance, Value key, Value value)
 {
     if (!ObjectIsInstance(instance))
     {
@@ -858,6 +892,8 @@ static Error SetObjectAttribute(VirtualMachine* self, Value value, Value key, Ob
     ObjectInstance* obj = ObjectAsInstance(instance);
 
     HashTablePut(&obj->fields, self, key, value);
+    StackPop(self); // value
+    StackPop(self); // instance
     StackPush(self, value);
 
     return Error_None;
@@ -875,10 +911,11 @@ static Error GetItem(VirtualMachine* self, Value value, uint8_t arity)
         return Error_WrongArgumentsCount;
     }
 
-    Value arg = StackPop(self);
-    StackPop(self); // value
+    Value arg = StackPeek(self);
 
     Object* obj = ValueAsObject(value);
+
+    Value res;
 
     switch (ObjectGetType(obj))
     {
@@ -896,7 +933,7 @@ static Error GetItem(VirtualMachine* self, Value value, uint8_t arity)
             return Error_OutOfRange;
         }
 
-        StackPush(self, ValueInt(str->str[index]));
+        res = ValueInt(str->str[index]);
 
         break;
     }
@@ -905,15 +942,13 @@ static Error GetItem(VirtualMachine* self, Value value, uint8_t arity)
     {
         ObjectDictionary* dictionary = ObjectAsDictionary(obj);
 
-        Value result;
-        if (!HashTableGet(&dictionary->entries, arg, &result))
+        if (!HashTableGet(&dictionary->entries, arg, &res))
         {
             fprintf(USER_ERR, "error: undefined key: ");
             ValuePrint(arg, USER_ERR);
             return Error_OutOfRange;
         }
 
-        StackPush(self, result);
         break;
     }
 
@@ -922,6 +957,11 @@ static Error GetItem(VirtualMachine* self, Value value, uint8_t arity)
                 ObjectTypeToString(ObjectGetType(obj)));
         return Error_TypeMismatch;
     }
+
+    StackPop(self);
+    StackPop(self);
+
+    StackPush(self, res);
 
     return Error_None;
 }
@@ -938,37 +978,13 @@ static Error SetItem(VirtualMachine* self, Value value, uint8_t arity)
         return Error_WrongArgumentsCount;
     }
 
-    Value assign = StackPop(self);
-    Value arg = StackPop(self);
+    Value assign = StackPeek(self);
+    Value arg = StackPeek(self);
 
     Object* obj = ValueAsObject(value);
 
-    // TODO: RESULT OF ASSIGNEMNT OF AN ITEM?
-    // Currently it is the original object.
-
     switch (ObjectGetType(obj))
     {
-    case ObjectType_String:
-    {
-        ObjectString* str = ObjectAsString(obj);
-        // TODO: CHARACTER TYPE?
-
-        CHECK_VALUE_TYPE(self, arg, Int);
-        CHECK_VALUE_TYPE(self, assign, Int);
-
-        int index = ValueAsInt(arg);
-        if (index < 0 || index >= str->length)
-        {
-            fprintf(USER_ERR, "error: index out of range\n");
-            return Error_OutOfRange;
-        }
-
-        // TODO: Modifiyable strings - yes or no?
-        str->str[index] = ValueAsInt(assign);
-
-        break;
-    }
-
     case ObjectType_Dictionary:
     {
         ObjectDictionary* dictionary = ObjectAsDictionary(obj);
@@ -983,5 +999,31 @@ static Error SetItem(VirtualMachine* self, Value value, uint8_t arity)
         return Error_TypeMismatch;
     }
 
+    StackPop(self); // value
+    StackPop(self); // arg
+    StackPop(self); // instance
+
+    StackPush(self, assign);
+
     return Error_None;
+}
+
+void CommonObjectsMarkTraverse(CommonObjects* self, MemoryManager* memory)
+{
+    ObjectMark((Object*)self->empty_string, memory);
+    ObjectMark((Object*)self->init, memory);
+    ObjectMark((Object*)self->script, memory);
+}
+
+void VirtualMachineMarkRoots(VirtualMachine* self, MemoryManager* memory)
+{
+    CommonObjectsMarkTraverse(&self->common, memory);
+
+    for (Value* slot = self->stack; slot != self->stack_ptr; ++slot)
+    {
+        ValueMark(*slot, memory);
+    }
+
+    ObjectMark((Object*)self->called_path, memory);
+    ObjectMark((Object*)self->packages_path, memory);
 }

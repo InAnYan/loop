@@ -43,3 +43,8 @@ void ObjectDictionaryPrint(const ObjectDictionary* self, FILE* out)
     // TODO: Dictionary print and custom objects.
     HashTablePrint(&self->entries, out);
 }
+
+void ObjectDictionaryMarkTraverse(ObjectDictionary* self, MemoryManager* memory)
+{
+    HashTableMark(&self->entries, memory);
+}

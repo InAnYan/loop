@@ -23,4 +23,6 @@ size_t ChunkGetLine(const Chunk* self, size_t offset);
 void ChunkDisassemble(const Chunk* self, FILE* out, const char* name);
 const uint8_t* ChunkDisassembleInstruction(const Chunk* self, FILE* out, const uint8_t* offset);
 
+void ChunkMarkTraverse(Chunk* self, MemoryManager* memory);
+
 #endif // LOOP_CHUNK_H

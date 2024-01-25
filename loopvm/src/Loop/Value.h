@@ -61,4 +61,6 @@ size_t ValueHash(Value self);
 bool ValueIsTrue(Value self);
 bool ValueIsFalse(Value self);
 
+void ValueMark(Value self, MemoryManager* memory);
+
 #endif // LOOP_VALUE_H

@@ -14,12 +14,12 @@ ObjectModule* ObjectModuleNew(VirtualMachine* vm, ObjectString* name, ObjectStri
 
     ObjectFunction* script = ObjectFunctionNew(vm, obj, vm->common.script, 0);
 
-    obj->is_partial = true;
     obj->name = name;
     obj->parent_dir = parent_dir;
     obj->script = script;
     HashTableInit(&obj->exports);
     HashTableInit(&obj->globals);
+    obj->state = ObjectModuleState_ScriptNotExecuted;
 
     return obj;
 }
@@ -74,4 +74,13 @@ void ObjectModuleFree(ObjectModule* self, VirtualMachine* vm)
 void ObjectModulePrint(const ObjectModule* self, FILE* out)
 {
     fprintf(out, "<module %s>", self->name->str);
+}
+
+void ObjectModuleMarkTraverse(ObjectModule* self, MemoryManager* memory)
+{
+    ObjectMark((Object*)self->name, memory);
+    ObjectMark((Object*)self->parent_dir, memory);
+    ObjectMark((Object*)self->script, memory);
+    HashTableMark(&self->exports, memory);
+    HashTableMark(&self->globals, memory);
 }

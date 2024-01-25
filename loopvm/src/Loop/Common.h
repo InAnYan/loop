@@ -23,6 +23,10 @@
 
 #define DEBUG_MODE
 
+#define STRESS_GC
+#define LOG_GC
+#define GC_HEAP_GROW_FACTOR 2
+
 // In future, the better idea is to have a VirtualMachineConfiguration struct.
 
 #define USER_OUT stdout

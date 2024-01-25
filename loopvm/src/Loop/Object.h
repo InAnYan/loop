@@ -52,6 +52,10 @@ const ObjectBoundMethod* ObjectAsBoundMethodConst(const Object* self);
 
 void ObjectPrint(const Object* self, FILE* out);
 
+// TODO: Should I pass there VM or MemoryManager?
 void ObjectFree(Object* self, VirtualMachine* vm);
+
+void ObjectMark(Object* self, MemoryManager* memory);
+void ObjectMarkTraverse(Object* self, MemoryManager* memory);
 
 #endif // LOOP_OBJECT_H

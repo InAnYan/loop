@@ -228,3 +228,11 @@ const uint8_t* DisassembleUnknown(const Chunk* self, FILE* out, const uint8_t* o
     fprintf(out, "Unknown: 0x%02x\n", byte);
     return offset + 1;
 }
+
+void ChunkMarkTraverse(Chunk* self, MemoryManager* memory)
+{
+    for (size_t i = 0; i < self->constants_length; ++i)
+    {
+        ValueMark(self->constants[i], memory);
+    }
+}

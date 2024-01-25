@@ -19,13 +19,20 @@ typedef struct HashTable
 } HashTable;
 
 void HashTableInit(HashTable* self);
-void HashTableInitWithCapacity(HashTable* self, VirtualMachine* vm);
+void HashTableInitWithCapacity(HashTable* self, VirtualMachine* vm); // TODO: Delete?
 void HashTableDeinit(HashTable* self, VirtualMachine* vm);
+
 bool HashTablePut(HashTable* self, VirtualMachine* vm, Value key, Value value);
 void HashTableAddAll(HashTable* self, VirtualMachine* vm, HashTable* other);
+
 bool HashTableGet(HashTable* self, Value key, Value* value);
 bool HashTableGetStringKey(HashTable* self, const char* key, size_t length, size_t hash, ObjectString** ptr);
+
 bool HashTableDelete(HashTable* self, Value key);
+
 void HashTablePrint(const HashTable* self, FILE* out);
+
+void HashTableMark(HashTable* self, MemoryManager* memory);
+void HashTableRemoveWhite(HashTable* self, MemoryManager* memory);
 
 #endif // LOOP_HASHTABLE_H

@@ -72,7 +72,7 @@ static void AdjustCapacity(HashTable* self, VirtualMachine* vm, size_t new_capac
         HashTableEntry* entry = &self->entries[i];
         if (!ValueIsNull(entry->key))
         {
-            HashTableEntry* dest = FindEntry(entries, self->capacity, entry->key);
+            HashTableEntry* dest = FindEntry(entries, new_capacity, entry->key);
             dest->key = entry->key;
             dest->value = entry->value;
             ++new_count;
@@ -222,6 +222,30 @@ static void PrintEntries(const HashTable* self, FILE* out)
             {
                 fprintf(out, ", ");
             }
+        }
+    }
+}
+
+void HashTableMark(HashTable* self, MemoryManager* memory)
+{
+    for (size_t i = 0; i < self->capacity; ++i)
+    {
+        HashTableEntry* entry = &self->entries[i];
+        ValueMark(entry->key, memory);
+        ValueMark(entry->value, memory);
+    }
+}
+
+void HashTableRemoveWhite(HashTable* self, MemoryManager* memory)
+{
+    for (size_t i = 0; i < self->capacity; ++i)
+    {
+        HashTableEntry* entry = &self->entries[i];
+
+        if (ValueIsObject(entry->key) && !ValueAsObject(entry->key)->marked)
+        {
+            bool res = HashTableDelete(self, entry->key);
+            assert(res);
         }
     }
 }

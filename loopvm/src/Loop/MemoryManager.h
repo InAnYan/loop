@@ -18,7 +18,12 @@ typedef struct MemoryManager
 {
     Object* objects;
     VirtualMachine* vm;
-    FILE* debug_out;
+    Object** gray_stack;
+    size_t gray_stack_capacity;
+    size_t gray_stack_count;
+    size_t bytes_allocated;
+    size_t next_gc;
+    bool on; // Used so that when loading objects from JSON memory manager offs.
 } MemoryManager;
 
 void MemoryManagerInit(MemoryManager* self, VirtualMachine* vm);

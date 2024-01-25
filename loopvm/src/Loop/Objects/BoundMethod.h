@@ -16,4 +16,6 @@ void ObjectBoundMethodFree(ObjectBoundMethod* self, VirtualMachine* vm);
 
 void ObjectBoundMethodPrint(const ObjectBoundMethod* self, FILE* out);
 
+void ObjectBoundMethodMarkTraverse(ObjectBoundMethod* self, MemoryManager* memory);
+
 #endif // LOOP_OBJECTS_BOUNDMETHOD_H

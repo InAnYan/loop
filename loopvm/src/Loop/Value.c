@@ -190,3 +190,11 @@ bool ValueIsFalse(Value self)
         return false;
     }
 }
+
+void ValueMark(Value self, MemoryManager* memory)
+{
+    if(ValueIsObject(self))
+    {
+        ObjectMark(ValueAsObject(self), memory);
+    }
+}

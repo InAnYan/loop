@@ -21,6 +21,8 @@ typedef struct CommonObjects
     ObjectString* empty_string;
 } CommonObjects;
 
+void CommonObjectsMarkTraverse(CommonObjects* self, MemoryManager* memory);
+
 typedef struct VirtualMachine
 {
     MemoryManager memory_manager;
@@ -40,5 +42,7 @@ void VirtualMachineDeinit(VirtualMachine* self);
 /// Do not forget to run the script.
 Error VirtualMachineLoadModule(VirtualMachine* self, ObjectString* parent, ObjectString* path, ObjectModule** ptr);
 Error VirtualMachineRunScript(VirtualMachine* self, ObjectFunction* script);
+
+void VirtualMachineMarkRoots(VirtualMachine* self, MemoryManager* memory);
 
 #endif // LOOP_VIRTUALMACHINE_H

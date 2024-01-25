@@ -32,3 +32,9 @@ void ObjectBoundMethodPrint(const ObjectBoundMethod* self, FILE* out)
             self->receiver->klass->name->str,
             self->method->name->str);
 }
+
+void ObjectBoundMethodMarkTraverse(ObjectBoundMethod* self, MemoryManager* memory)
+{
+    ObjectMark((Object*)self->receiver, memory);
+    ObjectMark((Object*)self->method, memory);
+}

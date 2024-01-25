@@ -4,12 +4,11 @@
 #include "Function.h"
 #include "Module.h"
 
-ObjectClass* ObjectClassNew(VirtualMachine* vm, ObjectModule* module, ObjectClass* super, ObjectString* name)
+ObjectClass* ObjectClassNew(VirtualMachine* vm, ObjectModule* module, ObjectString* name)
 {
     ObjectClass* obj = ALLOCATE_OBJECT(vm, Class);
 
     obj->module = module;
-    obj->super = super;
     obj->name = name;
     HashTableInit(&obj->methods);
 
@@ -25,7 +24,7 @@ ObjectClass* ObjectClassFromJSON(VirtualMachine* vm, ObjectModule* module, const
     ObjectString* name = ObjectStringFromJSON(vm, name_json);
 
     // The super class is set at runtime.
-    ObjectClass* obj = ObjectClassNew(vm, module, NULL, name);
+    ObjectClass* obj = ObjectClassNew(vm, module, name);
 
     const cJSON* methods_json = cJSON_GetObjectItemCaseSensitive(data, "methods");
     assert(cJSON_IsArray(methods_json));
@@ -46,7 +45,6 @@ ObjectClass* ObjectClassFromJSON(VirtualMachine* vm, ObjectModule* module, const
 
 void ObjectClassFree(ObjectClass* self, VirtualMachine* vm)
 {
-    self->super = NULL;
     self->name = NULL;
     HashTableDeinit(&self->methods, vm);
     FREE_OBJECT(vm, self, Class);
@@ -56,4 +54,11 @@ void ObjectClassPrint(const ObjectClass* self, FILE* out)
 {
     fprintf(out, "<class %s.%s>",
             self->module->name->str, self->name->str);
+}
+
+void ObjectClassMarkTraverse(ObjectClass* self, MemoryManager* memory)
+{
+    ObjectMark((Object*)self->module, memory);
+    ObjectMark((Object*)self->name, memory);
+    HashTableMark(&self->methods, memory);
 }
