@@ -1,0 +1,30 @@
+{
+    "code": [
+        29,
+        0,
+        21,
+        0,
+        20,
+        0,
+        31,
+        1,
+        7,
+        32
+    ],
+    "constants": [
+        {
+            "type": "String",
+            "data": "importedModule"
+        },
+        {
+            "type": "String",
+            "data": "some"
+        }
+    ],
+    "lines": [
+        0,
+        3,
+        0,
+        4
+    ]
+}

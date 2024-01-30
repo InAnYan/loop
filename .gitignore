@@ -1,0 +1,5 @@
+__pycache__/
+.code
+.loop_compiled/
+cmake-build-debug/
+cmake-build-debug-mingw/

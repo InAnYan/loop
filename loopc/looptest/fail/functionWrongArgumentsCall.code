@@ -1,0 +1,56 @@
+{
+    "code": [
+        1,
+        0,
+        21,
+        0,
+        20,
+        0,
+        1,
+        1,
+        1,
+        2,
+        27,
+        2,
+        7,
+        32
+    ],
+    "constants": [
+        {
+            "type": "Function",
+            "data": {
+                "name": "id",
+                "arity": 1,
+                "chunk": {
+                    "code": [
+                        22,
+                        1,
+                        0
+                    ],
+                    "constants": [],
+                    "lines": [
+                        0,
+                        0,
+                        1
+                    ]
+                }
+            }
+        },
+        {
+            "type": "Integer",
+            "data": 1
+        },
+        {
+            "type": "Integer",
+            "data": 2
+        }
+    ],
+    "lines": [
+        0,
+        3,
+        0,
+        0,
+        0,
+        6
+    ]
+}

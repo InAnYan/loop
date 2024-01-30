@@ -1,0 +1,26 @@
+{
+    "globals_count": 1,
+    "chunk": {
+        "code": [
+            1,
+            0,
+            28,
+            1,
+            32
+        ],
+        "constants": [
+            {
+                "type": "Integer",
+                "data": 42
+            },
+            {
+                "type": "String",
+                "data": "some"
+            }
+        ],
+        "lines": [
+            0,
+            4
+        ]
+    }
+}

@@ -1,0 +1,10 @@
+module CheckerMonad where
+
+import Control.Monad
+
+newtype CheckerMonad e c = { runCheck :: c -> (c, [e]) }
+
+instance Functor (CheckerMonad e) where
+  fmap fn a = \c -> ((fn c1), e1)
+    where
+      (c1, e1) = runCheck a c

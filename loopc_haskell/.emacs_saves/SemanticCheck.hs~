@@ -1,0 +1,7 @@
+module SemanticCheck where
+
+data Env = Env (Maybe Env) EnvKind [Def]
+
+data EnvKind = ModuleEnv | FuncEnv | BlockEnv | ClassEnv
+
+data Def = Def SrcPos String

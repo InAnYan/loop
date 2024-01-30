@@ -1,0 +1,19 @@
+{
+    "code": [
+        29,
+        0,
+        21,
+        0,
+        32
+    ],
+    "constants": [
+        {
+            "type": "String",
+            "data": "loop.loop"
+        }
+    ],
+    "lines": [
+        0,
+        4
+    ]
+}
