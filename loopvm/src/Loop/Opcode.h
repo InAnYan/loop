@@ -22,15 +22,15 @@
     o(Less, Simple) \
     o(PushNull, Simple) \
     o(DefineGlobal, Constant) \
-    o(GetGlobal, Constant) \
-    o(SetGlobal, Constant) \
+    o(GetGlobal, Byte) \
+    o(SetGlobal, Byte) \
     o(GetLocal, Byte) \
     o(SetLocal, Byte) \
     o(JumpIfFalsePop, Jump) \
     o(Jump, Jump) \
     o(Loop, Loop) \
     o(Call, Byte) \
-    o(Export, Simple) \
+    o(Export, Constant) \
     o(Import, Constant) \
     o(Top, Simple) \
     o(GetAttribute, Constant) \
@@ -38,7 +38,11 @@
     o(BuildDictionary, Byte) \
     o(GetItem, Byte) \
     o(SetItem, Byte) \
-    o(SetAttribute, Constant)
+    o(SetAttribute, Constant) \
+    o(GetExport, Constant) \
+    o(SetExport, Constant)
+
+// TODO: DELETE DEFINE GLOBAL.
 
 typedef enum Opcode
 {

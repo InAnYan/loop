@@ -4,8 +4,9 @@
 
 #include "Function.h"
 #include "String.h"
+#include "../Filesystem.h"
 
-ObjectModule* ObjectModuleNew(VirtualMachine* vm, ObjectString* name, ObjectString* parent_dir)
+ObjectModule* ObjectModuleNew(VirtualMachine* vm, ObjectString* name, ObjectString* parent_dir, size_t globals_count)
 {
     assert(name != NULL);
     assert(parent_dir != NULL);
@@ -18,7 +19,12 @@ ObjectModule* ObjectModuleNew(VirtualMachine* vm, ObjectString* name, ObjectStri
     obj->parent_dir = parent_dir;
     obj->script = script;
     HashTableInit(&obj->exports);
-    HashTableInit(&obj->globals);
+    obj->globals_count = globals_count;
+    obj->globals = ALLOC_ARRAY(vm, Value, globals_count);
+    for (size_t i = 0; i < globals_count; i++)
+    {
+        obj->globals[i] = ValueNull();
+    }
     obj->state = ObjectModuleState_ScriptNotExecuted;
 
     return obj;
@@ -28,35 +34,21 @@ ObjectModule* ObjectModuleFromJSON(VirtualMachine* vm, ObjectString* path, const
 {
     assert(cJSON_IsObject(data));
 
-    // TODO: Non portable path split. And probably ugly algorithm.
-    int dot = -1;
-    int slash = -1;
+    ObjectString* name = RemoveExtension(vm, GetBaseName(vm, path));
+    ObjectString* parent_dir = GetDirName(vm, GetDirName(vm, path));
 
-    for (int i = 0; i < path->length; i++)
-    {
-        if (path->str[i] == '.')
-        {
-            dot = i;
-        }
+    const cJSON* globals_count_json = cJSON_GetObjectItemCaseSensitive(data, "globals_count");
+    assert(cJSON_IsNumber(globals_count_json));
+    size_t globals_count = (size_t)cJSON_GetNumberValue(globals_count_json);
 
-        if (path->str[i] == '/' || path->str[i] == '\\')
-        {
-            slash = i;
-        }
-    }
+    const cJSON* chunk_json = cJSON_GetObjectItemCaseSensitive(data, "chunk");
 
-    ObjectString* name = NULL;
-    ObjectString* parent_dir = NULL;
-
-    // TODO: Bug if slash at the end.
-    name = ObjectStringSubstring(vm, path, (slash != -1 ? slash + 1 : 0), (dot != -1 ? dot : path->length - 1));
-    parent_dir = ObjectStringSubstring(vm, path, 0, (slash != -1 ? slash : 0));
-
-    ObjectModule* module = ObjectModuleNew(vm, name, parent_dir);
+    ObjectModule* module = ObjectModuleNew(vm, name, parent_dir, globals_count);
     bool put_res = HashTablePut(&vm->modules, vm, ValueObject((Object*)module->name), ValueObject((Object*)module));
     assert(put_res);
 
-    ChunkFromJSON(&module->script->chunk, vm, module, data);
+    ChunkFromJSON(&module->script->chunk, vm, module, chunk_json);
+    ChunkDisassemble(&module->script->chunk, DEBUG_OUT, module->script->name->str);
 
     return module;
 }
@@ -67,7 +59,9 @@ void ObjectModuleFree(ObjectModule* self, VirtualMachine* vm)
     self->parent_dir = NULL;
     self->script = NULL;
     HashTableDeinit(&self->exports, vm);
-    HashTableDeinit(&self->globals, vm);
+    FREE_ARRAY(vm, self->globals, Value, self->globals_count);
+    self->globals_count = 0;
+    self->globals = NULL;
     FREE_OBJECT(vm, self, Module);
 }
 
@@ -82,5 +76,4 @@ void ObjectModuleMarkTraverse(ObjectModule* self, MemoryManager* memory)
     ObjectMark((Object*)self->parent_dir, memory);
     ObjectMark((Object*)self->script, memory);
     HashTableMark(&self->exports, memory);
-    HashTableMark(&self->globals, memory);
 }

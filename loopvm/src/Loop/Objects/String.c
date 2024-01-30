@@ -84,7 +84,7 @@ ObjectString* ObjectStringConcatenate(VirtualMachine* vm, const ObjectString* le
     return ObjectStringNew(vm, str, length, left->hash);
 }
 
-ObjectString* ObjectStringSubstring(VirtualMachine* vm, ObjectString* str, size_t start, size_t end)
+ObjectString* ObjectStringSubstring(VirtualMachine* vm, const ObjectString* str, size_t start, size_t end)
 {
     // This checks are used in module loading.
 
@@ -95,7 +95,7 @@ ObjectString* ObjectStringSubstring(VirtualMachine* vm, ObjectString* str, size_
 
     if (start == 0 && end == str->length - 1)
     {
-        return str;
+        return (ObjectString*)str; // :)
     }
 
     const size_t length = end - start;

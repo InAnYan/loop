@@ -3,6 +3,18 @@ project(loopvm C)
 
 set(CMAKE_C_STANDARD 11)
 
+add_library(cJSON
+    src/libs/cJSON/cJSON.c
+    src/libs/cJSON/cJSON.h
+)
+target_include_directories(cJSON PRIVATE src/libs/cJSON)
+
+add_library(cwalk
+    src/libs/cwalk/cwalk.c
+    src/libs/cwalk/cwalk.h
+)
+target_include_directories(cwalk PRIVATE src/libs/cwalk)
+
 add_executable(loopvm
         src/main.c
         src/Loop/Chunk.c
@@ -20,8 +32,6 @@ add_executable(loopvm
         src/Loop/Common.h
         src/Loop/MemoryManager.h
         src/Loop/MemoryManager.c
-        src/libs/cJSON/cJSON.h
-        src/libs/cJSON/cJSON.c
         src/Loop/Error.h
         src/Loop/Error.c
         src/Loop/Objects/Module.h
@@ -40,11 +50,10 @@ add_executable(loopvm
         src/Loop/Objects/BoundMethod.h
         src/Loop/Objects/BoundMethod.c
         src/Loop/Filesystem.h
-        src/Loop/Filesystem_UNIX.c
         src/Loop/Filesystem.c
-        src/Loop/Filesystem_WINDOWS.c
 )
 target_include_directories(loopvm PRIVATE src/libs)
+target_link_libraries(loopvm PRIVATE cJSON cwalk)
 
 if(WIN32)
     add_compile_definitions(LOOP_COMPILE_WINDOWS)

@@ -19,7 +19,7 @@ void ObjectStringFree(ObjectString* self, VirtualMachine* vm);
 
 size_t CalculateStringHash(const char* str, size_t length);
 ObjectString* ObjectStringConcatenate(VirtualMachine* vm, const ObjectString* left, const ObjectString* right);
-ObjectString* ObjectStringSubstring(VirtualMachine* vm, ObjectString* str, size_t start, size_t end);
+ObjectString* ObjectStringSubstring(VirtualMachine* vm, const ObjectString* str, size_t start, size_t end);
 
 void ObjectStringPrint(const ObjectString* self, FILE* out);
 

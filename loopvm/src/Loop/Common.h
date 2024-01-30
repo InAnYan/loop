@@ -8,10 +8,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <stdarg.h>
 
 #include "Error.h"
 
 #include "cJSON/cJSON.h"
+#include "cwalk/cwalk.h"
 
 #define VM_STACK_SIZE_PER_FRAME 256
 #define VM_FRAMES_COUNT 64
@@ -26,6 +28,9 @@
 #define STRESS_GC
 #define LOG_GC
 #define GC_HEAP_GROW_FACTOR 2
+
+// Forgive me.
+#define LOOP_PATH_MAX 4096
 
 // In future, the better idea is to have a VirtualMachineConfiguration struct.
 

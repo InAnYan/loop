@@ -19,6 +19,8 @@ typedef struct CommonObjects
     ObjectString* script;
     ObjectString* init;
     ObjectString* empty_string;
+    ObjectString* dot_code;
+    ObjectString* compiled_dir;
 } CommonObjects;
 
 void CommonObjectsMarkTraverse(CommonObjects* self, MemoryManager* memory);

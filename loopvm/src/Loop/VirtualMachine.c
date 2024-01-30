@@ -17,6 +17,8 @@ void CommonObjectsInit(CommonObjects* self, VirtualMachine* vm)
     self->script = ObjectStringFromLiteral(vm, "script");
     self->init = ObjectStringFromLiteral(vm, "init");
     self->empty_string = ObjectStringFromLiteral(vm, "");
+    self->dot_code = ObjectStringFromLiteral(vm, ".code");
+    self->compiled_dir = ObjectStringFromLiteral(vm, ".loop_compiled");
 }
 
 void CommonObjectsDeinit(CommonObjects* self)
@@ -24,6 +26,17 @@ void CommonObjectsDeinit(CommonObjects* self)
     self->empty_string = NULL;
     self->init = NULL;
     self->script = NULL;
+    self->dot_code = NULL;
+    self->compiled_dir = NULL;
+}
+
+void CommonObjectsMarkTraverse(CommonObjects* self, MemoryManager* memory)
+{
+    ObjectMark((Object*)self->empty_string, memory);
+    ObjectMark((Object*)self->init, memory);
+    ObjectMark((Object*)self->script, memory);
+    ObjectMark((Object*)self->dot_code, memory);
+    ObjectMark((Object*)self->compiled_dir, memory);
 }
 
 Error VirtualMachineInit(VirtualMachine* self)
@@ -36,12 +49,15 @@ Error VirtualMachineInit(VirtualMachine* self)
     HashTableInitWithCapacity(&self->modules, self);
     CommonObjectsInit(&self->common, self); // Bug if a lot is not set.
 
+    /*
     self->called_path = GetCurrentWorkingDirectory(self);
     if (self->called_path == NULL)
     {
         fprintf(USER_ERR, "FATAL ERROR: failed to get current working directory.\n");
         return Error_IOError;
     }
+    */
+    // TODO: Remove called path in VM?
 
     const char* packages_path = getenv("LOOP_PACKAGES_PATH");
     if (packages_path == NULL)
@@ -78,7 +94,10 @@ static Value StackPeekAt(VirtualMachine* self, size_t offset);
 static Value StackPop(VirtualMachine* self);
 static void StackPush(VirtualMachine* self, Value value);
 
-static HashTable* GetGlobals(CallFrame* frame);
+static ObjectModule* GetModule(CallFrame* frame);
+static ObjectFunction* GetFunction(CallFrame* frame);
+static Value GetGlobal(CallFrame* frame, size_t arg);
+static void SetGlobal(CallFrame* frame, size_t arg, Value value);
 static HashTable* GetExports(CallFrame* frame);
 
 static uint8_t ReadByte(CallFrame* frame);
@@ -115,18 +134,20 @@ Error VirtualMachineRunScript(VirtualMachine* self, ObjectFunction* script)
     return Error_None;
 }
 
+static ObjectString* MakeCompiledPath(VirtualMachine* self, const ObjectString* path);
 static bool InternModule(VirtualMachine* self, ObjectString* path, ObjectModule** ptr);
 static Error LoadNewModule(VirtualMachine* self, ObjectString* path, ObjectModule** ptr);
 
 Error VirtualMachineLoadModule(VirtualMachine* self, ObjectString* parent, ObjectString* path, ObjectModule** ptr)
 {
-    ObjectString* parent_paths[] = {parent, self->called_path, self->packages_path};
+    ObjectString* parent_paths[] = {parent, self->common.empty_string, self->packages_path};
     ObjectString* constructed_paths[sizeof(parent_paths) / sizeof(parent_paths[0])] = {};
 
     for (size_t i = 0; i < sizeof(parent_paths) / sizeof(parent_paths[0]); ++i)
     {
         ObjectString* parent_path = parent_paths[i];
-        ObjectString* combined_path = JoinPath(self, parent_path, path);
+        ObjectString* compiled_path = MakeCompiledPath(self, path);
+        ObjectString* combined_path = JoinPath(self, parent_path, compiled_path);
         ObjectString* abs_path = GetAbsolutePath(self, combined_path);
 
         constructed_paths[i] = abs_path;
@@ -160,6 +181,14 @@ Error VirtualMachineLoadModule(VirtualMachine* self, ObjectString* parent, Objec
     // TODO: This error print shows .code extension.
     fprintf(USER_ERR, "error: module '%s' not found.\n", path->str);
     return Error_FileNotFound;
+}
+
+static ObjectString* MakeCompiledPath(VirtualMachine* self, const ObjectString* path)
+{
+    ObjectString* dir = GetDirName(self, path);
+    ObjectString* base = GetBaseName(self, path);
+    ObjectString* changed_dir = JoinPath(self, dir, self->common.compiled_dir, base);
+    return ObjectStringConcatenate(self, changed_dir, self->common.dot_code);
 }
 
 static bool InternModule(VirtualMachine* self, ObjectString* path, ObjectModule** ptr)
@@ -346,55 +375,19 @@ Error Run(VirtualMachine* self)
             break;
         }
 
-        case Opcode_DefineGlobal:
-        {
-            Value value = StackPeek(self);
-            Value key = ReadConstant(frame); // The compiler is responsible for correctness.
-
-            if (!HashTablePut(GetGlobals(frame), self, key, value))
-            {
-                fprintf(USER_ERR,
-                        "error: variable redefinition: '%s'\n",
-                        ObjectAsString(ValueAsObject(key))->str);
-                return Error_VariableRedefinition;
-            }
-
-            StackPop(self);
-
-            break;
-        }
-
         case Opcode_GetGlobal:
         {
-            Value key = ReadConstant(frame);
-
-            Value value;
-            if (!HashTableGet(GetGlobals(frame), key, &value))
-            {
-                fprintf(USER_ERR,
-                        "error: undefined variable: '%s'\n",
-                        ObjectAsString(ValueAsObject(key))->str);
-                return Error_UndefinedReference;
-            }
-
+            uint8_t arg = ReadByte(frame);
+            Value value = GetGlobal(frame, arg);
             StackPush(self, value);
-
             break;
         }
 
         case Opcode_SetGlobal:
         {
-            Value key = ReadConstant(frame);
+            uint8_t arg = ReadByte(frame);
             Value value = StackPeek(self);
-
-            if (HashTablePut(GetGlobals(frame), self, key, value))
-            {
-                fprintf(USER_ERR,
-                        "error: undefined variable: '%s'\n",
-                        ObjectAsString(ValueAsObject(key))->str);
-                return Error_UndefinedReference;
-            }
-
+            SetGlobal(frame, arg, value);
             break;
         }
 
@@ -448,14 +441,6 @@ Error Run(VirtualMachine* self)
         {
             Value value = StackPeek(self);
             Value key = ReadConstant(frame);
-
-            if (!HashTablePut(GetGlobals(frame), self, key, value))
-            {
-                fprintf(USER_ERR,
-                        "error: variable redefinition: '%s'\n",
-                        ObjectAsString(ValueAsObject(key))->str);
-                return Error_VariableRedefinition;
-            }
 
             if (!HashTablePut(GetExports(frame), self, key, value))
             {
@@ -572,6 +557,30 @@ Error Run(VirtualMachine* self)
             break;
         }
 
+        case Opcode_GetExport:
+        {
+            Value key = ReadConstant(frame);
+            Value value;
+            if (!HashTableGet(GetExports(frame), key, &value))
+            {
+                fprintf(USER_ERR, "error: variable not exported: '%s'\n", ObjectAsString(ValueAsObject(key))->str);
+                return Error_UndefinedReference;
+            }
+            break;
+        }
+
+        case Opcode_SetExport:
+        {
+            Value key = ReadConstant(frame);
+            Value value = StackPeek(self);
+            if (!HashTablePut(GetExports(frame), self, key, value))
+            {
+                fprintf(USER_ERR, "error: variable not exported: '%s'\n", ObjectAsString(ValueAsObject(key))->str);
+                return Error_UndefinedReference;
+            }
+            break;
+        }
+
         default:
             fprintf(USER_ERR, "FATAL ERROR: unknown opcode: 0x%02x\n", opcode);
             return Error_UnknownOpcode;
@@ -646,10 +655,26 @@ static void StackPush(VirtualMachine* self, Value value)
     *self->stack_ptr++ = value;
 }
 
-static HashTable* GetGlobals(CallFrame* frame)
+static ObjectModule* GetModule(CallFrame* frame)
 {
-    // TODO: Cache globals.
-    return &frame->function->module->globals;
+    return frame->function->module;
+}
+
+static ObjectFunction* GetFunction(CallFrame* frame)
+{
+    return frame->function;
+}
+
+static Value GetGlobal(CallFrame* frame, size_t arg)
+{
+    assert(arg < GetModule(frame)->globals_count);
+    return GetModule(frame)->globals[arg];
+}
+
+static void SetGlobal(CallFrame* frame, size_t arg, Value value)
+{
+    assert(arg < GetModule(frame)->globals_count);
+    GetModule(frame)->globals[arg] = value;
 }
 
 static HashTable* GetExports(CallFrame* frame)
@@ -1008,13 +1033,6 @@ static Error SetItem(VirtualMachine* self, Value value, uint8_t arity)
     return Error_None;
 }
 
-void CommonObjectsMarkTraverse(CommonObjects* self, MemoryManager* memory)
-{
-    ObjectMark((Object*)self->empty_string, memory);
-    ObjectMark((Object*)self->init, memory);
-    ObjectMark((Object*)self->script, memory);
-}
-
 void VirtualMachineMarkRoots(VirtualMachine* self, MemoryManager* memory)
 {
     CommonObjectsMarkTraverse(&self->common, memory);
@@ -1024,6 +1042,6 @@ void VirtualMachineMarkRoots(VirtualMachine* self, MemoryManager* memory)
         ValueMark(*slot, memory);
     }
 
-    ObjectMark((Object*)self->called_path, memory);
+    // ObjectMark((Object*)self->called_path, memory);
     ObjectMark((Object*)self->packages_path, memory);
 }

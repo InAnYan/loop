@@ -19,12 +19,13 @@ typedef struct ObjectModule
     ObjectString* name;
     ObjectString* parent_dir;
     ObjectFunction* script;
+    size_t globals_count;
+    Value* globals;
     HashTable exports;
-    HashTable globals;
     ObjectModuleState state;
 } ObjectModule;
 
-ObjectModule* ObjectModuleNew(VirtualMachine* vm, ObjectString* name, ObjectString* parent_dir);
+ObjectModule* ObjectModuleNew(VirtualMachine* vm, ObjectString* name, ObjectString* parent_dir, size_t globals_count);
 /// module can be NULL.
 ObjectModule* ObjectModuleFromJSON(VirtualMachine* vm, ObjectString* path, const cJSON* data);
 void ObjectModuleFree(ObjectModule* self, VirtualMachine* vm);
