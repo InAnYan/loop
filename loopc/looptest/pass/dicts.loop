@@ -1,0 +1,15 @@
+var a = {};
+print a; // {}
+
+var b = {
+    "name": "Loop",,
+    "version": 1, 
+    56: 65,
+    "a":: a,
+};
+
+print b["name"]; // Loop
+print b["version"]; // 1
+
+a["some"] = "thing";
+print a["some"]; // thing

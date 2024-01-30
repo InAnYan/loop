@@ -1,0 +1,21 @@
+function double(x) {
+    return x * 2;
+}
+
+print double(2); // 4
+
+function add(a, b) {
+    return a + b;
+}
+
+print add(1, 2); // 3
+
+function rec(n) {
+    if n == 0 || n == 1 {
+        return 1;
+    } else {
+        return n * rec(n - 1);
+    }
+}
+
+print rec(3); // 6

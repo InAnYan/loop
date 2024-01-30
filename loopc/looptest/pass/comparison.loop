@@ -1,0 +1,13 @@
+print 5 > 2; // true
+print 6 > 10; // false
+
+print 9 >= 3; // true
+print 9 >= 9; // true
+print 9 >= 10; // false
+
+print 5 < 87; // true
+print 5 < 1; // false
+
+print 8 <= 1234; // true
+print 8 <= 8; // true
+print 8 <= -9; // false

@@ -1,0 +1,24 @@
+/*
+class MyClass {
+    init(a, b) {
+        this.a = a;
+        this.b = b;
+    }
+
+    addFields() {
+        return this.a + this.b;
+    }
+}
+
+var a = MyClass(10, 21);
+a.newField = "ASD";
+print a.addFields(); // 31
+print a.newField; // ASD
+
+import "builtinTest" as builtins;
+
+print builtins.Int;
+*/
+
+import "sandbox2" as two;
+print two.hi;

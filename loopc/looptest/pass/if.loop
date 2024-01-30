@@ -1,0 +1,14 @@
+if true {
+    print "YEAH1";
+} else {
+    print "NO1";
+}
+
+if false {
+    print "NO2";
+} else {
+    print "YEAH2";
+}
+
+// YEAH1
+// YEAH2

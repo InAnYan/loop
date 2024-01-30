@@ -1,0 +1,3 @@
+import "importedModule" as module;
+
+print module.some; // 42

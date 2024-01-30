@@ -1,0 +1,2 @@
+var global = 10;
+print global; // 10

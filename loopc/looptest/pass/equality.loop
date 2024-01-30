@@ -1,0 +1,15 @@
+print 1 == 1; // true
+print 1 != 1; // false
+print null == null; // true
+print null != null; // false
+print true == true; // true
+print true != true; // false
+print false == false; // true
+print false != false; // false
+print "HI!" == "HI!"; // true
+print "HI!" != "HI!"; // false
+
+print 123 != 321; // true
+print 123 == 321; // false
+print "ASDA" != "{PO}"; // true
+print "ASDA" == "{PO}"; // false
