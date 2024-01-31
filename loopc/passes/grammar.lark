@@ -12,6 +12,7 @@
 module: decl*
 
 ?decl: var_decl
+     | let_decl
      | func_decl
      | import_decl
      | class_decl
@@ -21,6 +22,7 @@ import_decl: "import" STRING "as" IDENTIFIER _eos -> import_as
            | "import" "{" arg_list "}" "from" STRING _eos -> import_from
 
 var_decl: export "var" IDENTIFIER ["=" expr] _eos
+let_decl: export "let" IDENTIFIER ["=" expr] _eos
 
 func_decl: export "function" _func_body
 _func_body: IDENTIFIER "(" arg_list ")" block_stmt
@@ -97,10 +99,13 @@ expr_list: [expr (","+ expr)* ","*]
      | IDENTIFIER -> var_expr
      | "(" expr ")"
      | dictionary
+     | list_lit
 
 dictionary: "{" dict_list "}"
 dict_list: [dict_pair (","+ dict_pair)* ","*]
 dict_pair: expr ":"+ expr
+
+list_lit: "[" expr_list "]"
 
 TRUE: "true"
 FALSE: "false"

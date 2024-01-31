@@ -143,6 +143,7 @@ class LarkTreeToLoopAst(Transformer):
     print_stmt = tree(PrintStmt)
     expr_stmt = tree(ExprStmt)
     var_decl = tree(VarDecl)
+    let_decl = tree(LetDecl)
     if_stmt = tree(IfStmt)
     while_stmt = tree(WhileStmt)
     func_decl = tree(FuncDecl)
@@ -187,6 +188,8 @@ class LarkTreeToLoopAst(Transformer):
 
     dictionary = tree(DictionaryLiteral)
     dict_pair = tree(DictionaryPair)
+
+    list_lit = tree(ListLiteral)
 
     expr_list = some_list(Expr)
     dict_list = some_list(DictionaryPair)

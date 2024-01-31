@@ -24,7 +24,7 @@ class Opcode(Enum):
     Greater = 16
     Less = 17
     PushNull = 18
-    # DefineGlobal = 19 TODO: DELETE
+    BuildList = 19
     GetGlobal = 20
     SetGlobal = 21
     GetLocal = 22

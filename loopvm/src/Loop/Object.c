@@ -12,6 +12,7 @@
 #include "Objects/BoundMethod.h"
 #include "Objects/Upvalue.h"
 #include "Objects/Closure.h"
+#include "Objects/List.h"
 
 Object* ObjectAllocateRaw(VirtualMachine* vm, ObjectType type, size_t size)
 {

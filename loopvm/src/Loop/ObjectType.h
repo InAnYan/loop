@@ -10,7 +10,8 @@
     o(Instance) \
     o(BoundMethod) \
     o(Upvalue) \
-    o(Closure)
+    o(Closure) \
+    o(List)
 
 typedef enum ObjectType
 {

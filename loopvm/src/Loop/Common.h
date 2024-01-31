@@ -54,5 +54,6 @@ FORWARD_DECL(ObjectInstance);
 FORWARD_DECL(ObjectBoundMethod);
 FORWARD_DECL(ObjectClosure);
 FORWARD_DECL(ObjectUpvalue);
+FORWARD_DECL(ObjectList);
 
 #endif // LOOP_CONFIGURATION_H

@@ -30,6 +30,13 @@ class BaseCompiler(AstVisitor):
     def compile(self, node: AstNode):
         return self.visit(node)
 
+    def visit_ListLiteral(self, expr: ListLiteral):
+        for item in expr.elements:
+            self.compile(item)
+
+        self.emitter.opcode(Opcode.BuildList, expr.pos)
+        self.emitter.byte(len(expr.elements), expr.pos)
+
     def visit_Module(self, module: Module):
         for stmt in module.stmts:
             self.compile(stmt)
@@ -63,6 +70,9 @@ class BaseCompiler(AstVisitor):
             self.emitter.opcode(Opcode.PushNull, stmt.pos)
 
         self.define_var(stmt.name)
+
+    def visit_LetDecl(self, stmt: LetDecl):
+        raise Exception("let should be lowered")
 
     def visit_ReturnStmt(self, stmt: ReturnStmt):
         if stmt.expr:

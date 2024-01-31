@@ -11,6 +11,7 @@
 #include "Objects/Dictionary.h"
 #include "Objects/Function.h"
 #include "Objects/Instance.h"
+#include "Objects/List.h"
 #include "Objects/Module.h"
 #include "Objects/Upvalue.h"
 
@@ -97,6 +98,7 @@ static Value StackPeek(VirtualMachine* self);
 static void StackPeekSet(VirtualMachine* self, Value value);
 static Value StackPeekAt(VirtualMachine* self, size_t offset);
 static Value StackPop(VirtualMachine* self);
+static void StackPopSeveral(VirtualMachine* self, size_t count);
 static void StackPush(VirtualMachine* self, Value value);
 
 static ObjectModule* GetModule(CallFrame* frame);
@@ -556,12 +558,7 @@ Error Run(VirtualMachine* self)
                 HashTablePut(&obj->entries, self, key, value);
             }
 
-            StackPop(self);
-
-            for (int i = 0; i < count * 2; i++)
-            {
-                StackPop(self);
-            }
+            StackPopSeveral(self, count * 2 + 1);
 
             StackPush(self, ValueObject((Object*)obj));
 
@@ -641,6 +638,25 @@ Error Run(VirtualMachine* self)
         {
             CloseUpvalues(self, self->stack_ptr - 1);
             StackPop(self);
+            break;
+        }
+
+        case Opcode_BuildList:
+        {
+            uint8_t count = ReadByte(frame);
+
+            ObjectList* obj = ObjectListNew(self);
+            StackPush(self, ValueObject((Object*)obj));
+
+            for (int i = count - 1; i >= 0; --i)
+            {
+                ObjectListPush(obj, self, StackPeekAt(self, i + 1));
+            }
+
+            StackPopSeveral(self, count + 1);
+
+            StackPush(self, ValueObject((Object*)obj));
+
             break;
         }
 
@@ -761,6 +777,14 @@ static Value StackPeekAt(VirtualMachine* self, size_t offset)
 static Value StackPop(VirtualMachine* self)
 {
     return *--self->stack_ptr;
+}
+
+static void StackPopSeveral(VirtualMachine* self, size_t count)
+{
+    for (size_t i = 0; i < count; ++i)
+    {
+        StackPop(self);
+    }
 }
 
 static void StackPush(VirtualMachine* self, Value value)
@@ -1078,7 +1102,6 @@ static Error GetItem(VirtualMachine* self, Value value, uint8_t arity)
     case ObjectType_String:
     {
         ObjectString* str = ObjectAsString(obj);
-        // TODO: CHARACTER TYPE?
 
         CHECK_VALUE_TYPE(self, arg, Int);
 
@@ -1089,7 +1112,7 @@ static Error GetItem(VirtualMachine* self, Value value, uint8_t arity)
             return Error_OutOfRange;
         }
 
-        res = ValueInt(str->str[index]);
+        res = ValueObject((Object*)ObjectStringSubstring(self, str, index, index + 1));
 
         break;
     }
@@ -1104,6 +1127,24 @@ static Error GetItem(VirtualMachine* self, Value value, uint8_t arity)
             ValuePrint(arg, USER_ERR);
             return Error_OutOfRange;
         }
+
+        break;
+    }
+
+    case ObjectType_List:
+    {
+        ObjectList* list = ObjectAsList(obj);
+
+        CHECK_VALUE_TYPE(self, arg, Int);
+
+        int index = ValueAsInt(arg);
+        if (index < 0 || index >= list->count)
+        {
+            fprintf(USER_ERR, "error: index out of range\n");
+            return Error_OutOfRange;
+        }
+
+        res = list->elements[index];
 
         break;
     }
@@ -1146,6 +1187,24 @@ static Error SetItem(VirtualMachine* self, Value value, uint8_t arity)
         ObjectDictionary* dictionary = ObjectAsDictionary(obj);
 
         HashTablePut(&dictionary->entries, self, arg, assign);
+        break;
+    }
+
+    case ObjectType_List:
+    {
+        ObjectList* list = ObjectAsList(obj);
+
+        CHECK_VALUE_TYPE(self, arg, Int);
+
+        int index = ValueAsInt(arg);
+        if (index < 0 || index >= list->count)
+        {
+            fprintf(USER_ERR, "error: index out of range\n");
+            return Error_OutOfRange;
+        }
+
+        list->elements[index] = assign;
+
         break;
     }
 

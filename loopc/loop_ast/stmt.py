@@ -40,6 +40,13 @@ class VarDecl(Stmt):
 
 
 @dataclass
+class LetDecl(Stmt):
+    export: bool
+    name: Identifier
+    expr: Optional[Expr] = None
+
+
+@dataclass
 class BlockStmt(Stmt):
     stmts: List[Stmt]
     locals: List[bool] = field(default_factory=list)

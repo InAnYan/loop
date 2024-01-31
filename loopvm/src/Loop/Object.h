@@ -29,35 +29,26 @@ Object* ObjectFromJSON(VirtualMachine* vm, ObjectModule* module, const cJSON* js
 
 ObjectType ObjectGetType(const Object* self);
 
-bool ObjectIsString(const Object* self);
-bool ObjectIsFunction(const Object* self);
-bool ObjectIsModule(const Object* self);
-bool ObjectIsDictionary(const Object* self);
-bool ObjectIsClass(const Object* self);
-bool ObjectIsInstance(const Object* self);
-bool ObjectIsBoundMethod(const Object* self);
-bool ObjectIsUpvalue(const Object* self);
-bool ObjectIsClosure(const Object* self);
+#define OBJECT_IS_DECL(name) \
+    bool ObjectIs##name(const Object* self);
 
-ObjectString* ObjectAsString(Object* self);
-ObjectFunction* ObjectAsFunction(Object* self);
-ObjectModule* ObjectAsModule(Object* self);
-ObjectDictionary* ObjectAsDictionary(Object* self);
-ObjectClass* ObjectAsClass(Object* self);
-ObjectInstance* ObjectAsInstance(Object* self);
-ObjectBoundMethod* ObjectAsBoundMethod(Object* self);
-ObjectUpvalue* ObjectAsUpvalue(Object* self);
-ObjectClosure* ObjectAsClosure(Object* self);
+ObjectType_LIST(OBJECT_IS_DECL)
 
-const ObjectString* ObjectAsStringConst(const Object* self);
-const ObjectFunction* ObjectAsFunctionConst(const Object* self);
-const ObjectModule* ObjectAsModuleConst(const Object* self);
-const ObjectDictionary* ObjectAsDictionaryConst(const Object* self);
-const ObjectClass* ObjectAsClassConst(const Object* self);
-const ObjectInstance* ObjectAsInstanceConst(const Object* self);
-const ObjectBoundMethod* ObjectAsBoundMethodConst(const Object* self);
-const ObjectUpvalue* ObjectAsUpvalueConst(const Object* self);
-const ObjectClosure* ObjectAsClosureConst(const Object* self);
+#undef OBJECT_IS_DECL
+
+#define OBJECT_AS_DECL(name) \
+    Object##name* ObjectAs##name(Object* self);
+
+ObjectType_LIST(OBJECT_AS_DECL)
+
+#undef OBJECT_AS_DECL
+
+#define OBJECT_AS_CONST_DECL(name) \
+    const Object##name* ObjectAs##name##Const(const Object* self);
+
+ObjectType_LIST(OBJECT_AS_CONST_DECL)
+
+#undef OBJECT_AS_CONST_DECL
 
 void ObjectPrint(const Object* self, FILE* out);
 

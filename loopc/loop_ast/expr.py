@@ -148,3 +148,8 @@ class DictionaryPair(AstNode):
 @dataclass
 class DictionaryLiteral(Expr):
     entries: List[DictionaryPair]
+
+
+@dataclass
+class ListLiteral(Expr):
+    elements: List[Expr]

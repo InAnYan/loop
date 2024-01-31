@@ -21,7 +21,7 @@
     o(Greater, Simple) \
     o(Less, Simple) \
     o(PushNull, Simple) \
-    o(DefineGlobal, Constant) \
+    o(BuildList, Byte) \
     o(GetGlobal, Byte) \
     o(SetGlobal, Byte) \
     o(GetLocal, Byte) \
@@ -45,8 +45,6 @@
     o(GetUpvalue, Byte) \
     o(SetUpvalue, Byte) \
     o(CloseUpvalue, Simple)
-
-// TODO: DELETE DEFINE GLOBAL.
 
 typedef enum Opcode
 {

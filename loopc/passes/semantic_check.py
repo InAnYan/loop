@@ -24,6 +24,7 @@ class Local:
     name: Identifier
     scope: int
     is_captured: bool
+    is_final: bool
 
 
 @dataclass
@@ -40,6 +41,7 @@ class Env:
     parent: Optional[Env]
     defs: List[Local]
     globals: List[Local]  # A dirty hack, but easy to use
+    exports: List[Local]
     upvalues: List[Upvalue]
     scope: int
 
@@ -54,9 +56,10 @@ class Env:
         self.parent = parent
         self.scope = 0 if parent is None else parent.scope + 1
         self.defs = [
-            Local(THIS_IDENT, self.scope, False)
+            Local(THIS_IDENT, self.scope, False, True)
         ]  # TODO: Check this not in class.
         self.globals = []
+        self.exports = []
         self.upvalues = []
 
     def new_block(self):
@@ -77,17 +80,20 @@ class Env:
         self.scope -= 1
         return lst
 
-    def define_var(self, name: Identifier, export: bool):
+    def define_var(self, name: Identifier, export: bool, is_final: bool):
         self.check_redefinition(name)
         if export:
             self.check_export(name)
 
         if self.scope == 0:
-            lst = self.globals
+            if export:
+                lst = self.exports
+            else:
+                lst = self.globals
         else:
             lst = self.defs
 
-        lst.append(Local(name, self.scope, False))
+        lst.append(Local(name, self.scope, False, is_final))
 
         name.ref_type = (
             RefType.LOCAL
@@ -177,6 +183,17 @@ class Env:
 
         return False
 
+    # Very bad.
+    def check_assignable(self, name: Identifier) -> bool:
+        for deff in reversed(self.globals + self.exports + self.defs):
+            if deff.name.text == name.text:
+                return not deff.is_final
+
+        if self.parent:
+            return self.parent.check_assignable(name)
+
+        assert False
+
 
 class SemanticCheck(AstVisitor):
     file: File
@@ -193,8 +210,12 @@ class SemanticCheck(AstVisitor):
     def check(self, node: AstNode):
         self.visit(node)
 
+    def visit_ListLiteral(self, expr: ListLiteral):
+        for item in expr.elements:
+            self.check(item)
+
     def visit_ImportAsStmt(self, stmt: ImportAsStmt):
-        self.env.define_var(stmt.name, False)
+        self.env.define_var(stmt.name, False, True)
 
         self.check_imported(stmt.path)
 
@@ -219,7 +240,13 @@ class SemanticCheck(AstVisitor):
         if stmt.expr:
             self.check(stmt.expr)
 
-        self.env.define_var(stmt.name, stmt.export)
+        self.env.define_var(stmt.name, stmt.export, False)
+
+    def visit_LetDecl(self, stmt: VarDecl):
+        if stmt.expr:
+            self.check(stmt.expr)
+
+        self.env.define_var(stmt.name, stmt.export, True)
 
     def visit_VarExpr(self, expr: VarExpr):
         # TODO: Removed dunder check because lowered before semantic check.
@@ -238,12 +265,12 @@ class SemanticCheck(AstVisitor):
         self.visit_FuncProto(stmt, stmt.export)
 
     def visit_FuncProto(self, stmt: FuncDecl, export: bool):
-        self.env.define_var(stmt.name, export)
+        self.env.define_var(stmt.name, export, True)
 
         self.new_env(stmt.name.text)
 
         for arg in stmt.args:
-            self.env.define_var(arg, False)
+            self.env.define_var(arg, False, False)
 
         self.check(stmt.body)
 
@@ -290,6 +317,11 @@ class SemanticCheck(AstVisitor):
     def visit_Assignment(self, expr: Assignment):
         self.check(expr.var)
         self.check(expr.expr)
+
+        if type(expr.var) == VarExpr:
+            name = expr.var.name
+            if not self.env.check_assignable(name):
+                self.error_listener.error(expr.pos, "cannot assign '" + name.text + "'")
 
         if not check_assignment_target(expr.var):
             self.error_listener.error(

@@ -55,6 +55,8 @@ add_executable(loopvm
         src/Loop/Objects/Closure.h
         src/Loop/Objects/Closure.c
         src/Loop/Objects/Upvalue.c
+        src/Loop/Objects/List.h
+        src/Loop/Objects/List.c
 )
 target_include_directories(loopvm PRIVATE src/libs)
 target_link_libraries(loopvm PRIVATE cJSON cwalk)

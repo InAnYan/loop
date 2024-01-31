@@ -2,10 +2,11 @@ from typing import Iterable, Optional
 
 from loop_ast.module import *
 
+from passes.lower_ast_after import lower_after_module
+from passes.lower_ast_before import lower_before_module
 from passes.read_file import read_loop_file
 from passes.loop_parser import parse_loop_module
 from passes.semantic_check import perform_semantic_check
-from passes.lower_ast import lower_module
 from passes.compiler import compile_module
 from passes.write_chunk import write_chunk
 
@@ -27,12 +28,13 @@ def full_passes(
 
     if file := read_loop_file(resolved):
         if module := parse_loop_module(error_listener, file):
-            lowered = lower_module(module)
+            lowered = lower_before_module(module)
 
             with new_cd(os.path.dirname(resolved)):
                 semantic_pass = perform_semantic_check(file, error_listener, lowered)
-            
+
             if semantic_pass:
+                lowered = lower_after_module(lowered)
                 if chunk := compile_module(error_listener, lowered):
                     return write_chunk(compiled, chunk)
                 else:
@@ -61,8 +63,8 @@ def resolve_path(path: str) -> str:
 
 
 def generate_search_paths() -> Iterable[str]:
-    yield ''
-    if val := os.environ.get('LOOP_PACKAGES_PATH'):
+    yield ""
+    if val := os.environ.get("LOOP_PACKAGES_PATH"):
         yield val
 
 
@@ -77,7 +79,7 @@ def new_cd(x):
     # This could raise an exception, but it's probably
     # best to let it propagate and let the caller
     # deal with it, since they requested x
-    if x != '':
+    if x != "":
         os.chdir(x)
 
     try:
