@@ -7,9 +7,11 @@
 #include "Value.h"
 #include "HashTable.h"
 
+// Closure may be NULL.
 typedef struct CallFrame
 {
     ObjectFunction* function;
+    ObjectClosure* closure; // It's so dumb simple...
     const uint8_t* ip;
     Value* locals;
 } CallFrame;
@@ -33,6 +35,7 @@ typedef struct VirtualMachine
     Value* stack_ptr;
     CallFrame frames[VM_FRAMES_COUNT];
     CallFrame* frame_ptr;
+    ObjectUpvalue* open_upvalues;
     HashTable strings;
     HashTable modules;
     ObjectString* called_path;

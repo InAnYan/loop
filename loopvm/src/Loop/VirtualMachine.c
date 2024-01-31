@@ -6,11 +6,13 @@
 
 #include "Objects/BoundMethod.h"
 #include "Objects/Class.h"
+#include "Objects/Closure.h"
 #include "Objects/String.h"
 #include "Objects/Dictionary.h"
 #include "Objects/Function.h"
 #include "Objects/Instance.h"
 #include "Objects/Module.h"
+#include "Objects/Upvalue.h"
 
 void CommonObjectsInit(CommonObjects* self, VirtualMachine* vm)
 {
@@ -68,12 +70,15 @@ Error VirtualMachineInit(VirtualMachine* self)
 
     self->packages_path = ObjectStringFromLiteral(self, packages_path);
 
-    self->memory_manager.on = false;
+    self->open_upvalues = NULL;
+
     return Error_None;
 }
 
 void VirtualMachineDeinit(VirtualMachine* self)
 {
+    assert(self->open_upvalues == NULL);
+    self->open_upvalues = NULL;
     self->packages_path = NULL;
     self->called_path = NULL;
     HashTableDeinit(&self->modules, self);
@@ -85,7 +90,7 @@ void VirtualMachineDeinit(VirtualMachine* self)
 }
 
 static Error PushScript(VirtualMachine* self, ObjectFunction* function);
-static Error PushFrame(VirtualMachine* self, ObjectFunction* function);
+static Error PushFrame(VirtualMachine* self, ObjectFunction* function, ObjectClosure* closure);
 static Error PopFrame(VirtualMachine* self);
 
 static Value StackPeek(VirtualMachine* self);
@@ -122,6 +127,9 @@ static Error GetItem(VirtualMachine* self, Value value, uint8_t arity);
 static Error SetItem(VirtualMachine* self, Value value, uint8_t arity);
 static Error GetAttribute(VirtualMachine* self, Value from, Value attr);
 static Error SetAttribute(VirtualMachine* self, Value instance, Value key, Value value);
+
+static ObjectUpvalue* CaptureUpvalue(VirtualMachine* self, Value* location);
+static void CloseUpvalues(VirtualMachine* self, Value* last);
 
 static Error Run(VirtualMachine* self);
 
@@ -539,15 +547,18 @@ Error Run(VirtualMachine* self)
             assert(count % 2 == 0);
 
             ObjectDictionary* obj = ObjectDictionaryNew(self);
+            StackPush(self, ValueObject((Object*)obj)); // Interesting bug.
 
-            for (int i = 0; i < count; i += 2)
+            for (int i = 0; i < count; ++i)
             {
-                Value value = StackPeekAt(self, i);
-                Value key = StackPeekAt(self, i + 1);
+                Value value = StackPeekAt(self, i * 2 + 1);
+                Value key = StackPeekAt(self, i * 2 + 2);
                 HashTablePut(&obj->entries, self, key, value);
             }
 
-            for (int i = 0; i < count; i++)
+            StackPop(self);
+
+            for (int i = 0; i < count * 2; i++)
             {
                 StackPop(self);
             }
@@ -581,6 +592,58 @@ Error Run(VirtualMachine* self)
             break;
         }
 
+        case Opcode_GetUpvalue:
+        {
+            uint8_t index = ReadByte(frame);
+            assert(frame->closure);
+            assert(index < frame->closure->upvalue_count);
+            StackPush(self, *frame->closure->upvalues[index]->location);
+            break;
+        }
+
+        case Opcode_SetUpvalue:
+        {
+            uint8_t index = ReadByte(frame);
+            assert(frame->closure);
+            assert(index < frame->closure->upvalue_count);
+            *frame->closure->upvalues[index]->location = StackPeek(self);
+            break;
+        }
+
+        case Opcode_BuildClosure:
+        {
+            ObjectFunction* func = ObjectAsFunction(ValueAsObject(StackPeek(self)));
+            int count = ReadByte(frame);
+            ObjectClosure* closure = ObjectClosureNew(self, func, count);
+            StackPop(self); // func is inside the closure.
+            StackPush(self, ValueObject((Object*)closure));
+
+            for (int i = 0; i < count; ++i)
+            {
+                bool is_local = ReadByte(frame);
+                uint8_t index = ReadByte(frame);
+
+                if (is_local)
+                {
+                    closure->upvalues[i] = CaptureUpvalue(self, frame->locals + index);
+                }
+                else
+                {
+                    assert(frame->closure);
+                    closure->upvalues[i] = frame->closure->upvalues[index];
+                }
+            }
+
+            break;
+        }
+
+        case Opcode_CloseUpvalue:
+        {
+            CloseUpvalues(self, self->stack_ptr - 1);
+            StackPop(self);
+            break;
+        }
+
         default:
             fprintf(USER_ERR, "FATAL ERROR: unknown opcode: 0x%02x\n", opcode);
             return Error_UnknownOpcode;
@@ -588,14 +651,63 @@ Error Run(VirtualMachine* self)
     }
 }
 
+static ObjectUpvalue* CaptureUpvalue(VirtualMachine* self, Value* location)
+{
+    // TODO: Sort linked list.
+
+    ObjectUpvalue* current = self->open_upvalues;
+    while (current && current->location != location)
+    {
+        current = current->next;
+    }
+
+    if (current)
+    {
+        return current;
+    }
+
+    ObjectUpvalue* upvalue = ObjectUpvalueNew(self, location, self->open_upvalues);
+    self->open_upvalues = upvalue;
+    return upvalue;
+}
+
+static void CloseUpvalues(VirtualMachine* self, Value* last)
+{
+    ObjectUpvalue* prev = NULL;
+    ObjectUpvalue* cur = self->open_upvalues;
+    while (cur)
+    {
+        if (cur->location >= last)
+        {
+            cur->closed = *cur->location;
+            cur->location = &cur->closed;
+
+            if (prev)
+            {
+                prev->next = cur->next;
+            }
+            else
+            {
+                self->open_upvalues = cur->next;
+            }
+        }
+        else
+        {
+            prev = cur;
+        }
+
+        cur = cur->next;
+    }
+}
+
 static Error PushScript(VirtualMachine* self, ObjectFunction* script)
 {
     StackPush(self, ValueObject((Object*)script));
 
-    return PushFrame(self, script);
+    return PushFrame(self, script, NULL);
 }
 
-static Error PushFrame(VirtualMachine* self, ObjectFunction* function)
+static Error PushFrame(VirtualMachine* self, ObjectFunction* function, ObjectClosure* closure)
 {
     if (self->frame_ptr - self->frames == VM_FRAMES_COUNT)
     {
@@ -605,6 +717,7 @@ static Error PushFrame(VirtualMachine* self, ObjectFunction* function)
 
     CallFrame* frame = self->frame_ptr++;
     frame->function = function;
+    frame->closure = closure;
     frame->ip = function->chunk.code;
     frame->locals = self->stack_ptr - function->arity - 1;
 
@@ -619,39 +732,39 @@ static Error PopFrame(VirtualMachine* self)
         return Error_StackUnderflow;
     }
 
+    // To close captured arguments.
+    CloseUpvalues(self, self->frame_ptr[-1].locals);
+
     --self->frame_ptr;
     self->stack_ptr = self->frame_ptr->locals;
 
     return Error_None;
 }
 
+// TODO: Asserts in stack operations.
+
 static Value StackPeek(VirtualMachine* self)
 {
-    assert(self->stack_ptr != self->stack);
     return self->stack_ptr[-1];
 }
 
 static void StackPeekSet(VirtualMachine* self, Value value)
 {
-    assert(self->stack_ptr != self->stack);
     self->stack_ptr[-1] = value;
 }
 
 static Value StackPeekAt(VirtualMachine* self, size_t offset)
 {
-    assert(offset < self->stack_ptr - self->stack);
     return self->stack_ptr[-1 - offset];
 }
 
 static Value StackPop(VirtualMachine* self)
 {
-    assert(self->stack_ptr != self->stack);
     return *--self->stack_ptr;
 }
 
 static void StackPush(VirtualMachine* self, Value value)
 {
-    assert(self->stack_ptr != self->stack + VM_STACK_SIZE_PER_FRAME * VM_FRAMES_COUNT + 1);
     *self->stack_ptr++ = value;
 }
 
@@ -783,7 +896,25 @@ static Error Call(VirtualMachine* self, Value value, uint8_t arity)
             return Error_WrongArgumentsCount;
         }
 
-        TRY(PushFrame(self, func));
+        TRY(PushFrame(self, func, NULL));
+
+        break;
+    }
+
+    case ObjectType_Closure:
+    {
+        // Oh, no. Code duplication. Again.
+
+        ObjectClosure* closure = ObjectAsClosure(obj);
+
+        if (closure->function->arity != arity)
+        {
+            fprintf(USER_ERR, "error: wrong number of arguments, expected %ld, got %d\n",
+                    closure->function->arity, arity);
+            return Error_WrongArgumentsCount;
+        }
+
+        TRY(PushFrame(self, closure->function, closure));
 
         break;
     }
@@ -1004,7 +1135,7 @@ static Error SetItem(VirtualMachine* self, Value value, uint8_t arity)
     }
 
     Value assign = StackPeek(self);
-    Value arg = StackPeek(self);
+    Value arg = StackPeekAt(self, 1);
 
     Object* obj = ValueAsObject(value);
 

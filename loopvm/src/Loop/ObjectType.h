@@ -8,7 +8,9 @@
     o(Dictionary) \
     o(Class) \
     o(Instance) \
-    o(BoundMethod)
+    o(BoundMethod) \
+    o(Upvalue) \
+    o(Closure)
 
 typedef enum ObjectType
 {

@@ -11,10 +11,10 @@ def main():
         sys.exit(2)
 
     in_path = sys.argv[1]
-    if not full_passes(DefaultErrorListener(), in_path):
+    if not full_passes(DefaultErrorListener(), in_path + ".loop"):
         sys.exit(3)
 
 
 if __name__ == "__main__":
-    #full_passes(DefaultErrorListener(), "loopc/sandbox.loop")
+    # full_passes(DefaultErrorListener(), "loopc/looptest/pass/closureMany.loop")
     main()

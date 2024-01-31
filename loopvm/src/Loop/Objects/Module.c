@@ -76,4 +76,8 @@ void ObjectModuleMarkTraverse(ObjectModule* self, MemoryManager* memory)
     ObjectMark((Object*)self->parent_dir, memory);
     ObjectMark((Object*)self->script, memory);
     HashTableMark(&self->exports, memory);
+    for (size_t i = 0; i < self->globals_count; ++i)
+    {
+        ValueMark(self->globals[i], memory);
+    }
 }

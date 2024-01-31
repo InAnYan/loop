@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional
 
 from loop_ast.base import *
@@ -42,7 +42,7 @@ class VarDecl(Stmt):
 @dataclass
 class BlockStmt(Stmt):
     stmts: List[Stmt]
-    locals_count: Optional[int] = None
+    locals: List[bool] = field(default_factory=list)
 
 
 @dataclass
@@ -59,11 +59,18 @@ class WhileStmt(Stmt):
 
 
 @dataclass
+class Upvalue:
+    index: int
+    is_local: bool
+
+
+@dataclass
 class FuncDecl(Stmt):
     export: bool
     name: Identifier
     args: List[Identifier]
     body: BlockStmt
+    upvalues: List[Upvalue] = field(default_factory=list)
 
 
 @dataclass

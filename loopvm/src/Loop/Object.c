@@ -10,6 +10,8 @@
 #include "Objects/Class.h"
 #include "Objects/Instance.h"
 #include "Objects/BoundMethod.h"
+#include "Objects/Upvalue.h"
+#include "Objects/Closure.h"
 
 Object* ObjectAllocateRaw(VirtualMachine* vm, ObjectType type, size_t size)
 {
@@ -169,6 +171,14 @@ void ObjectMark(Object* self, MemoryManager* memory)
     }
 
     memory->gray_stack[memory->gray_stack_count++] = self;
+}
+
+void ObjectMarkMaybeNull(Object* self, MemoryManager* memory)
+{
+    if (self != NULL)
+    {
+        ObjectMark(self, memory);
+    }
 }
 
 void ObjectMarkTraverse(Object* self, MemoryManager* memory)

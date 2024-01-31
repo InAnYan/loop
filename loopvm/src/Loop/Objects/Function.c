@@ -1,5 +1,7 @@
 #include "Function.h"
 
+#include "../MemoryManager.h"
+
 #include "String.h"
 #include "Module.h"
 

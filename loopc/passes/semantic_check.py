@@ -19,112 +19,187 @@ def perform_semantic_check(
     return not error_listener.had_error
 
 
-class EnvType(Enum):
-    MODULE = auto()
-    FUNC = auto()
-    CLASS = auto()
+@dataclass
+class Local:
+    name: Identifier
+    scope: int
+    is_captured: bool
 
 
 @dataclass
-class Def:
+class ClassDef:
     name: Identifier
-    scope: int
-    exported: bool = False
-    # is upvalue or is local
 
 
-THIS_IDENT = Identifier(SourcePosition('', 0), 'this', RefType.LOCAL, 0)
+THIS_IDENT = Identifier(SourcePosition("", 0), "this", RefType.LOCAL, 0)
 
 
 class Env:
-    kind: EnvType
     name: str
     error_listener: ErrorListener
     parent: Optional[Env]
-    defs: List[Def]
+    defs: List[Local]
+    globals: List[Local]  # A dirty hack, but easy to use
+    upvalues: List[Upvalue]
     scope: int
 
-    def __init__(self, kind: EnvType, name: str, error_listener: ErrorListener, parent: Optional[Env] = None):
-        self.kind = kind
+    def __init__(
+        self,
+        name: str,
+        error_listener: ErrorListener,
+        parent: Optional[Env] = None,
+    ):
         self.name = name
         self.error_listener = error_listener
         self.parent = parent
         self.scope = 0 if parent is None else parent.scope + 1
-        self.defs = [Def(THIS_IDENT, self.scope, False)] if kind == EnvType.FUNC else []
+        self.defs = [
+            Local(THIS_IDENT, self.scope, False)
+        ]  # TODO: Check this not in class.
+        self.globals = []
+        self.upvalues = []
 
     def new_block(self):
         self.scope += 1
-        
-    def end_block(self) -> int:
+
+    def end_block(self) -> List[bool]:
         assert self.scope > 0
 
-        count = 0
-        for deff in reversed(self.defs):
+        lst = []
+        while len(self.defs):
+            deff = self.defs[-1]
             if deff.scope == self.scope:
-                count += 1
-        
+                lst.append(deff.is_captured)
+                self.defs.pop()
+            else:
+                break
+
         self.scope -= 1
-        return count
+        return lst
 
     def define_var(self, name: Identifier, export: bool):
         self.check_redefinition(name)
         if export:
             self.check_export(name)
 
-        self.defs.append(Def(name, self.scope, export))
+        if self.scope == 0:
+            lst = self.globals
+        else:
+            lst = self.defs
 
-        name.ref_type = RefType.LOCAL if self.scope > 0 else RefType.EXPORT if export else RefType.GLOBAL
-        name.ref_index = len(self.defs) - 1
+        lst.append(Local(name, self.scope, False))
+
+        name.ref_type = (
+            RefType.LOCAL
+            if self.scope > 0
+            else RefType.EXPORT
+            if export
+            else RefType.GLOBAL
+        )
+        name.ref_index = len(lst) - 1
 
     def check_redefinition(self, name: Identifier):
-        for deff in reversed(self.defs):
+        for deff in reversed(self.globals + self.defs):
             if deff.scope == self.scope and deff.name.text == name.text:
                 self.error_listener.error(
                     name.pos, f"variable '{name.text}' is already defined"
                 )
-                self.error_listener.note(deff.name.pos, f"previous definition of '{name.text}'")
+                self.error_listener.note(
+                    deff.name.pos, f"previous definition of '{name.text}'"
+                )
                 break
 
     def check_export(self, name: Identifier):
         if self.scope != 0:
-            self.error_listener.error(name.pos, "cannot export not a top-level definition")
+            self.error_listener.error(
+                name.pos, "cannot export not a top-level definition"
+            )
 
     def resolve(self, name: Identifier):
+        if self.resolve_local(name):
+            return
+
+        if self.resolve_upvalue(name):
+            return
+
+        if self.resolve_global(name):
+            return
+
+        self.error_listener.error(name.pos, f"variable '{name.text}' is not defined")
+
+    def resolve_local(self, name: Identifier) -> bool:
         for deff in reversed(self.defs):
             if deff.name.text == name.text:
                 name.ref_type = deff.name.ref_type
                 name.ref_index = deff.name.ref_index
+                return True
+
+        return False
+
+    def resolve_upvalue(self, name: Identifier) -> bool:
+        if not self.parent:
+            return False
+
+        if self.parent.resolve_local(name):
+            self.parent.defs[name.ref_index].is_captured = True
+            self.add_upvalue(name, True)
+            return True
+
+        if self.parent.resolve_upvalue(name):
+            self.add_upvalue(name, False)
+            return True
+
+        return False
+
+    def add_upvalue(self, name: Identifier, is_local: bool):
+        name.ref_type = RefType.UPVALUE
+
+        for i, upvalue in enumerate(self.upvalues):
+            if upvalue.index == name.ref_index and upvalue.is_local == is_local:
+                name.ref_index = i
                 return
 
-        if self.parent:
-            self.parent.resolve(name)
-        else:
-            self.error_listener.error(name.pos, f"variable '{name.text}' is not defined")
+        self.upvalues.append(Upvalue(name.ref_index, is_local))
+        name.ref_index = len(self.upvalues) - 1
 
-    def is_in(self, kind: EnvType) -> bool:
-        return self.kind == kind or (self.parent and self.parent.is_in(kind))
+        if name.ref_index > 255:
+            self.error_listener.error(name.pos, "too many upvalues")
+
+    def resolve_global(self, name: Identifier) -> bool:
+        if self.parent:
+            return self.parent.resolve_global(name)
+        else:
+            for deff in self.globals:
+                if deff.name.text == name.text:
+                    name.ref_type = deff.name.ref_type
+                    name.ref_index = deff.name.ref_index
+                    return True
+
+        return False
 
 
 class SemanticCheck(AstVisitor):
     file: File
     error_listener: ErrorListener
     env: Env
+    classes: List[ClassDef]
 
     def __init__(self, file: File, error_listener: ErrorListener):
         self.file = file
         self.error_listener = error_listener
-        self.env = Env(EnvType.MODULE, '<script>', error_listener)
+        self.env = Env("<script>", error_listener)
+        self.classes = []
 
     def check(self, node: AstNode):
         self.visit(node)
-    
+
     def visit_ImportAsStmt(self, stmt: ImportAsStmt):
         self.env.define_var(stmt.name, False)
 
         self.check_imported(stmt.path)
 
     def visit_ImportFromStmt(self, stmt: ImportFromStmt):
-        raise Exception('should be lowered')
+        raise Exception("should be lowered")
         """
         if len(stmt.names) == 0:
             self.error_listener.error(stmt.pos, "empty import statement")
@@ -139,11 +214,11 @@ class SemanticCheck(AstVisitor):
         from full_passes import full_passes
 
         full_passes(self.error_listener, path + ".loop", self.file.path)
-    
+
     def visit_VarDecl(self, stmt: VarDecl):
         if stmt.expr:
             self.check(stmt.expr)
-        
+
         self.env.define_var(stmt.name, stmt.export)
 
     def visit_VarExpr(self, expr: VarExpr):
@@ -164,21 +239,24 @@ class SemanticCheck(AstVisitor):
 
     def visit_FuncProto(self, stmt: FuncDecl, export: bool):
         self.env.define_var(stmt.name, export)
-        
-        self.new_env(EnvType.FUNC, stmt.name.text)
+
+        self.new_env(stmt.name.text)
 
         for arg in stmt.args:
             self.env.define_var(arg, False)
 
         self.check(stmt.body)
-        
+
+        if self.env.upvalues:
+            stmt.upvalues = self.env.upvalues
+
         self.end_env()
 
     def visit_ReturnStmt(self, stmt: ReturnStmt):
-        if self.env.kind != EnvType.FUNC:
+        if not self.env.parent:
             self.error_listener.error(stmt.pos, "unexpected return statement")
 
-        if self.env.is_in(EnvType.CLASS) and self.env.is_in(EnvType.FUNC) and self.env.name == "init":
+        if self.classes and self.env.name == "init":
             if stmt.expr != None or not (
                 type(stmt.expr) == VarExpr and stmt.expr.name.text == "init"
             ):
@@ -190,13 +268,13 @@ class SemanticCheck(AstVisitor):
 
     def visit_ClassDecl(self, stmt: ClassDecl):
         self.env.define_var(stmt.name, stmt.export)
-        
-        self.new_env(EnvType.CLASS, stmt.name.text)
-        
+
+        self.new_class(stmt.name)
+
         for method in stmt.methods:
             self.check(method)
-            
-        self.end_env()
+
+        self.end_class()
 
     def visit_Method(self, stmt: Method):
         self.visit_FuncProto(stmt, False)
@@ -207,7 +285,7 @@ class SemanticCheck(AstVisitor):
         for block_stmt in stmt.stmts:
             self.check(block_stmt)
 
-        stmt.locals_count = self.env.end_block()
+        stmt.locals = self.env.end_block()
 
     def visit_Assignment(self, expr: Assignment):
         self.check(expr.var)
@@ -220,14 +298,21 @@ class SemanticCheck(AstVisitor):
             )
 
     # Utility.
-    
-    def new_env(self, kind: EnvType, name: str):
-        self.env = Env(kind, name, self.error_listener, self.env)
+
+    def new_env(self, name: str):
+        self.env = Env(name, self.error_listener, self.env)
 
     def end_env(self):
         assert self.env  # Just in case.
         assert self.env.parent
         self.env = self.env.parent
+
+    def new_class(self, name: str):
+        self.classes.append(ClassDef(name))
+
+    def end_class(self):
+        assert self.classes
+        self.classes.pop()
 
     # Trivial.
 
@@ -235,7 +320,7 @@ class SemanticCheck(AstVisitor):
         for stmt in module.stmts:
             self.check(stmt)
 
-        module.globals_count = len(self.env.defs)
+        module.globals_count = len(self.env.globals)
 
     def visit_PrintStmt(self, stmt: PrintStmt):
         self.check(stmt.expr)

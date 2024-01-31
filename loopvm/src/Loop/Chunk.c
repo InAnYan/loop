@@ -137,6 +137,7 @@ const uint8_t* DisassembleConstant(const Chunk* self, FILE* out, const uint8_t* 
 const uint8_t* DisassembleJump(const Chunk* self, FILE* out, const uint8_t* offset, const char* name);
 const uint8_t* DisassembleByte(const Chunk* self, FILE* out, const uint8_t* offset, const char* name);
 const uint8_t* DisassembleLoop(const Chunk* self, FILE* out, const uint8_t* offset, const char* name);
+const uint8_t* DisassembleClosure(const Chunk* self, FILE* out, const uint8_t* offset, const char* name);
 const uint8_t* DisassembleUnknown(const Chunk* self, FILE* out, const uint8_t* offset, uint8_t byte);
 
 const uint8_t* ChunkDisassembleInstruction(const Chunk* self, FILE* out, const uint8_t* offset)
@@ -221,6 +222,22 @@ const uint8_t* DisassembleLoop(const Chunk* self, FILE* out, const uint8_t* offs
 
     fprintf(out, "%-16s %04d\n", name, arg);
     return offset + 3;
+}
+
+const uint8_t* DisassembleClosure(const Chunk* self, FILE* out, const uint8_t* offset, const char* name)
+{
+    int count = offset[1];
+    fprintf(out, "%-16s %4d\n", name, count);
+
+    for (int i = 0; i < count; ++i)
+    {
+        bool is_local = offset[i * 2 + 2];
+        int index = offset[i * 2 + 3];
+
+        fprintf(out, "%04ld      | %s %d\n", offset + i * 2 + 1 - self->code, is_local ? "Local" : "Upvalue", index);
+    }
+
+    return offset + 1 + 1 + count * 2;
 }
 
 const uint8_t* DisassembleUnknown(const Chunk* self, FILE* out, const uint8_t* offset, uint8_t byte)

@@ -1,7 +1,5 @@
 #include "Filesystem.h"
 
-#include <linux/limits.h>
-
 #include "Objects/String.h"
 
 ObjectString* JoinPathImpl(VirtualMachine* vm, ...)
@@ -100,6 +98,8 @@ ObjectString* RemoveExtension(VirtualMachine* vm, const ObjectString* path)
 }
 
 #ifdef LOOP_COMPILE_UNIX
+
+#include <linux/limits.h>
 
 ObjectString* GetAbsolutePath(VirtualMachine* vm, const ObjectString* path)
 {

@@ -40,7 +40,11 @@
     o(SetItem, Byte) \
     o(SetAttribute, Constant) \
     o(GetExport, Constant) \
-    o(SetExport, Constant)
+    o(SetExport, Constant) \
+    o(BuildClosure, Closure) \
+    o(GetUpvalue, Byte) \
+    o(SetUpvalue, Byte) \
+    o(CloseUpvalue, Simple)
 
 // TODO: DELETE DEFINE GLOBAL.
 

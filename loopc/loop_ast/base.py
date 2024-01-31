@@ -29,7 +29,7 @@ class RefType(Enum):
     GLOBAL = auto()
     EXPORT = auto()
     LOCAL = auto()
-    # UPVALUE = auto()
+    UPVALUE = auto()
 
 
 @dataclass

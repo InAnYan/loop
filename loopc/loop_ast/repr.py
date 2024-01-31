@@ -44,6 +44,10 @@ class Opcode(Enum):
     SetAttribute = 36
     GetExport = 37
     SetExport = 38
+    BuildClosure = 39
+    GetUpvalue = 40
+    SetUpvalue = 41
+    CloseUpvalue = 42
 
 
 class LongInst(Enum):
@@ -135,7 +139,6 @@ class StringValue(Value):
 class FunctionValue(Value):
     name: str
     arity: int
-    # locals_count: int
     body: Chunk
 
     def get_type(self) -> str:
@@ -156,7 +159,7 @@ class ModuleValue(Value):
 
     def get_type(self) -> str:
         return "Module"
-    
+
     def make_json_object_data(self) -> Any:
         return {
             "globals_count": self.globals_count,

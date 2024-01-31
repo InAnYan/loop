@@ -12,7 +12,7 @@ if __name__ == "__main__":
             continue
 
         if p := run_and_compile_loop(
-            os.path.join(TEST_FOLDER, "fail", path),
+            os.path.join(TEST_FOLDER, "fail", os.path.splitext(path)[0]),
             silent_el=True,
             silent_stderr=True,
         ):
@@ -32,7 +32,7 @@ if __name__ == "__main__":
         file = read_loop_file(os.path.join(TEST_FOLDER, "pass", path)).contents
 
         if p := run_and_compile_loop(
-            os.path.join(TEST_FOLDER, "pass", path),
+            os.path.join(TEST_FOLDER, "pass", os.path.splitext(path)[0]),
             silent_stderr=True,
             pipe_out=True,
             silent_el=True,

@@ -20,5 +20,19 @@ import "builtinTest" as builtins;
 print builtins.Int;
 */
 
-import "sandbox2" as two;
-print two.hi;
+function makeCounter() {
+    var counter = 0;
+
+    function fn() {
+        counter = counter + 1;
+        return counter;
+    }
+
+    return fn;
+}
+
+var c = makeCounter();
+print c();
+print c();
+print c();
+print c();

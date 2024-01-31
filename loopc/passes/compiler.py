@@ -11,7 +11,9 @@ from loop_ast.stmt import *
 from loop_ast.module import *
 
 
-def compile_module(error_listener: ErrorListener, module: Module) -> Optional[ModuleValue]:
+def compile_module(
+    error_listener: ErrorListener, module: Module
+) -> Optional[ModuleValue]:
     return ModuleCompiler(error_listener, module.path).do(module)
 
 
@@ -36,9 +38,11 @@ class BaseCompiler(AstVisitor):
         self.emitter.opcode(Opcode.ModuleEnd, last_pos)
 
     def visit_ImportAsStmt(self, stmt: ImportAsStmt):
-        self.emitter.add_and_process_constant(StringValue(stmt.path), stmt.pos, LongInst.Import)
+        self.emitter.add_and_process_constant(
+            StringValue(stmt.path), stmt.pos, LongInst.Import
+        )
         self.define_var(stmt.name)
-    
+
     def visit_ImportFromStmt(self, stmt: ImportFromStmt):
         raise Exception(
             "compiler does not implement ImportFromStmt, it should be lowered"
@@ -72,8 +76,8 @@ class BaseCompiler(AstVisitor):
         for child in stmt.stmts:
             self.compile(child)
 
-        for _ in range(stmt.locals_count):
-            self.emitter.opcode(Opcode.Pop, stmt.pos) # TODO: Opcode Pop Some
+        for local in stmt.locals:
+            self.emitter.opcode(Opcode.CloseUpvalue if local else Opcode.Pop, stmt.pos)
 
     def visit_IfStmt(self, stmt: IfStmt):
         self.compile(stmt.condition)
@@ -104,6 +108,15 @@ class BaseCompiler(AstVisitor):
         comp = FunctionCompiler(self.error_listener, self.path)
         func_val = comp.do(stmt)
         self.emitter.add_and_process_constant(func_val, stmt.pos, LongInst.PushConstant)
+
+        if stmt.upvalues:
+            self.emitter.opcode(Opcode.BuildClosure, stmt.pos)
+            self.emitter.byte(len(stmt.upvalues), stmt.pos)
+
+            for upvalue in stmt.upvalues:
+                self.emitter.byte(1 if upvalue.is_local else 0, stmt.pos)
+                self.emitter.byte(upvalue.index, stmt.pos)
+
         self.define_var(stmt.name)
 
     def visit_ClassDecl(self, stmt: ClassDecl):
@@ -247,8 +260,11 @@ class BaseCompiler(AstVisitor):
             case RefType.GLOBAL:
                 self.emitter.opcode(Opcode.SetGlobal, name.pos)
                 self.emitter.byte(name.ref_index, name.pos)
+                self.emitter.opcode(Opcode.Pop, name.pos)
             case RefType.EXPORT:
-                self.emitter.add_and_process_constant(StringValue(name.text), name.pos, LongInst.Export)
+                self.emitter.add_and_process_constant(
+                    StringValue(name.text), name.pos, LongInst.Export
+                )
             case RefType.LOCAL:
                 pass
             case _:
@@ -257,28 +273,48 @@ class BaseCompiler(AstVisitor):
     def get_var(self, name: Identifier):
         match name.ref_type:
             case RefType.GLOBAL | RefType.LOCAL:
-                opcode = Opcode.GetGlobal if name.ref_type == RefType.GLOBAL else Opcode.GetLocal
+                opcode = (
+                    Opcode.GetGlobal
+                    if name.ref_type == RefType.GLOBAL
+                    else Opcode.GetLocal
+                )
                 self.emitter.opcode(opcode, name.pos)
                 self.emitter.byte(name.ref_index, name.pos)
 
             case RefType.EXPORT:
-                self.emitter.add_and_process_constant(StringValue(name.text), name.pos, LongInst.GetExport)
+                self.emitter.add_and_process_constant(
+                    StringValue(name.text), name.pos, LongInst.GetExport
+                )
 
-            case _:
-                raise NotImplementedError()
+            case RefType.UPVALUE:
+                self.emitter.opcode(Opcode.GetUpvalue, name.pos)
+                self.emitter.byte(name.ref_index, name.pos)
+
+            case x:
+                raise NotImplementedError(x)
 
     def set_var(self, name: Identifier):
         match name.ref_type:
             case RefType.GLOBAL | RefType.LOCAL:
-                opcode = Opcode.SetGlobal if name.ref_type == RefType.GLOBAL else Opcode.SetLocal
+                opcode = (
+                    Opcode.SetGlobal
+                    if name.ref_type == RefType.GLOBAL
+                    else Opcode.SetLocal
+                )
                 self.emitter.opcode(opcode, name.pos)
                 self.emitter.byte(name.ref_index, name.pos)
 
             case RefType.EXPORT:
-                self.emitter.add_and_process_constant(StringValue(name.text), name.pos, LongInst.SetExport)
-                
-            case _:
-                raise NotImplementedError()
+                self.emitter.add_and_process_constant(
+                    StringValue(name.text), name.pos, LongInst.SetExport
+                )
+
+            case RefType.UPVALUE:
+                self.emitter.opcode(Opcode.SetUpvalue, name.pos)
+                self.emitter.byte(name.ref_index, name.pos)
+
+            case x:
+                raise NotImplementedError(x)
 
 
 class FunctionCompiler(BaseCompiler):
@@ -296,10 +332,14 @@ class FunctionCompiler(BaseCompiler):
                 self.emitter.byte(0, last_pos)
                 self.emitter.opcode(Opcode.Return, last_pos)
             else:
-                self.emitter.opcode(Opcode.PushNull)
+                self.emitter.opcode(Opcode.PushNull, last_pos)
                 self.emitter.opcode(Opcode.Return, last_pos)
 
-        return FunctionValue(func.name.text, len(func.args), self.emitter.make_chunk())
+        return FunctionValue(
+            func.name.text,
+            len(func.args),
+            self.emitter.make_chunk(),
+        )
 
 
 class ModuleCompiler(BaseCompiler):

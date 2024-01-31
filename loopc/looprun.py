@@ -10,14 +10,14 @@ from full_passes import full_passes
 def run_and_compile_loop(path: str, **kwargs) -> Optional[Popen]:
     if not full_passes(
         SilentErrorListener() if kwargs.get("silent_el") else DefaultErrorListener(),
-        path,
+        path + ".loop",
     ):
         return None
 
     # https://thraxil.org/users/anders/posts/2008/03/13/Subprocess-Hanging-PIPE-is-your-enemy/
 
     p = Popen(
-        ["loopvm", get_compiled_path(path)],
+        ["loopvm", path],
         stdout=PIPE if kwargs.get("pipe_out") else None,
         stderr=DEVNULL if kwargs.get("silent_stderr") else None,
     )
