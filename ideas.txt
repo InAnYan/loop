@@ -1,4 +1,0 @@
-panic statement
-assert statement
-// TODO: Do not compile if there is no need (file not changed, compare dates of change)
-TODO: Think about script names

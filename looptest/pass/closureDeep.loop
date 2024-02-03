@@ -1,0 +1,22 @@
+function outer() {
+  var x = "value";
+  function middle() {
+    function inner() {
+      print x;
+    }
+
+    print "create inner closure";
+    return inner;
+  }
+
+  print "return from outer";
+  return middle;
+}
+
+var mid = outer();
+var in = mid();
+in();
+
+// return from outer
+// create inner closure
+// value

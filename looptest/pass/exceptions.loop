@@ -1,0 +1,29 @@
+function maybeThrow(toThrow) {
+    print "BEFORE TRY";
+
+    try {
+        print "TRY BEGIN";
+        if toThrow {
+            throw "oops";
+        }
+        print "TRY END";
+    } catch e {
+        print "GOT: ERROR";
+        print e;
+    }
+
+    print "AFTER TRY";
+}
+
+maybeThrow(true);
+// BEFORE TRY
+// TRY BEGIN
+// GOT: ERROR
+// oops
+// AFTER TRY
+
+maybeThrow(true);
+// BEFORE TRY
+// TRY BEGIN
+// TRY END
+// AFTER TRY

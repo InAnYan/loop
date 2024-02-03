@@ -1,0 +1,10 @@
+function makeClosure() {
+  var local = "local";
+  function closure() {
+    print local;
+  }
+  return closure;
+}
+
+var closure = makeClosure();
+closure(); // local

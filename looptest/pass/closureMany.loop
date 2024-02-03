@@ -1,0 +1,18 @@
+function outer() {
+  var a = 1;
+  var b = 2;
+  function middle() {
+    var c = 3;
+    var d = 4;
+    function inner() {
+      print a + c + b + d;
+    }
+    return inner;
+  }
+
+  return middle;
+}
+
+var x = outer();
+var inner = x();
+inner(); // 10

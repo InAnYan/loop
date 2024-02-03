@@ -3,3 +3,5 @@ __pycache__/
 .loop_compiled/
 cmake-build-debug/
 cmake-build-debug-mingw/
+__pycache__/
+*.egg-info/

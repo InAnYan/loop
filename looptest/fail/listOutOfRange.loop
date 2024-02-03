@@ -1,0 +1,2 @@
+var lst = []
+print lst[1];
