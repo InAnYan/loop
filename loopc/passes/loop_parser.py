@@ -154,8 +154,16 @@ class LarkTreeToLoopAst(Transformer):
     class_decl = tree(ClassDecl)
     method = tree(Method)
 
-    def method_list(self, meta: Meta, *method: Tuple[Method, ...]) -> List[Method]:
+    def method_list(self, meta: Meta, *method: Method) -> List[Method]:
         return list(method)
+
+    def maybe_inherit(
+        self, meta: Meta, name: Optional[Identifier]
+    ) -> Optional[Identifier]:
+        return name
+
+    try_stmt = tree(TryStmt)
+    throw_stmt = tree(ThrowStmt)
 
     # Expressions.
 

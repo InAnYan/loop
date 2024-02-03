@@ -28,7 +28,8 @@ func_decl: export "function" _func_body
 _func_body: IDENTIFIER "(" arg_list ")" block_stmt
 arg_list: [IDENTIFIER (","+ IDENTIFIER)* ","*]
 
-class_decl: export "class" IDENTIFIER "{" method_list "}"
+class_decl: export "class" IDENTIFIER maybe_inherit "{" method_list "}"
+maybe_inherit: ["<" IDENTIFIER]
 method_list: method*
 method: _func_body
 
@@ -39,6 +40,8 @@ export: EXPORT?
      | if_stmt
      | while_stmt
      | return_stmt
+     | try_stmt
+     | throw_stmt
      | expr_stmt
 
 print_stmt: "print" expr _eos
@@ -46,6 +49,8 @@ block_stmt: "{" decl* "}"
 if_stmt: "if" expr block_stmt ["else" block_stmt]
 while_stmt: "while" expr block_stmt
 return_stmt: "return" [expr] _eos
+try_stmt: "try" block_stmt "catch" IDENTIFIER block_stmt
+throw_stmt: "throw" expr _eos
 expr_stmt: expr _eos
 
 _eos: ";"+

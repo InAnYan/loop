@@ -96,4 +96,17 @@ class Method(AstNode):
 class ClassDecl(Stmt):
     export: bool
     name: Identifier
+    parent: Optional[Identifier]
     methods: List[Method]
+
+
+@dataclass
+class TryStmt(Stmt):
+    try_block: BlockStmt
+    catch_name: Identifier
+    catch_block: BlockStmt
+
+
+@dataclass
+class ThrowStmt(Stmt):
+    expr: Expr

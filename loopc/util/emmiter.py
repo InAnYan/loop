@@ -56,6 +56,8 @@ class Emitter:
                 self.long_inst_impl(index, pos, [Opcode.GetExport])
             case LongInst.SetExport:
                 self.long_inst_impl(index, pos, [Opcode.SetExport])
+            case LongInst.SuperGet:
+                self.long_inst_impl(index, pos, [Opcode.SuperGet])
             case _:
                 raise Exception("not implemented long_inst")
 

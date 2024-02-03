@@ -141,7 +141,27 @@ class BaseCompiler(AstVisitor):
             stmt.pos,
             LongInst.PushConstant,
         )
+
+        if stmt.parent:
+            self.get_var(stmt.parent)
+            self.emitter.opcode(Opcode.Inherit, stmt.parent.pos)
+
         self.define_var(stmt.name)
+
+    def visit_ThrowStmt(self, stmt: ThrowStmt):
+        self.compile(stmt.expr)
+        self.emitter.opcode(Opcode.Throw, stmt.pos)
+
+    def visit_TryStmt(self, stmt: TryStmt):
+        try_begin = self.emitter.jump(Opcode.TryBegin, stmt.pos)
+        self.compile(stmt.try_block)
+        self.emitter.opcode(Opcode.TryEnd, stmt.pos)
+        try_end = self.emitter.jump(Opcode.Jump, stmt.pos)
+
+        self.emitter.patch_jump(try_begin, stmt.pos)
+        self.compile(stmt.catch_block)
+
+        self.emitter.patch_jump(try_end, stmt.pos)
 
     def visit_IntegerLiteral(self, expr: IntegerLiteral):
         self.emitter.add_and_process_constant(
@@ -220,10 +240,17 @@ class BaseCompiler(AstVisitor):
                 raise NotImplementedError()
 
     def visit_GetAttrExpr(self, expr: GetAttrExpr):
-        self.compile(expr.obj)
-        self.emitter.add_and_process_constant(
-            StringValue(expr.attr.text), expr.pos, LongInst.GetAttribute
-        )
+        match expr.obj:
+            case VarExpr(_, Identifier(_, "super", _, _)):
+                self.emitter.add_and_process_constant(
+                    StringValue(expr.attr.text), expr.pos, LongInst.SuperGet
+                )
+
+            case _:
+                self.compile(expr.obj)
+                self.emitter.add_and_process_constant(
+                    StringValue(expr.attr.text), expr.pos, LongInst.GetAttribute
+                )
 
     def visit_UnaryOp(self, expr: UnaryOp):
         self.compile(expr.expr)
@@ -260,7 +287,11 @@ class BaseCompiler(AstVisitor):
         self.emitter.opcode(op.to_opcode(), pos)
 
         match op:
-            case BinaryOpType.GreaterEqual | BinaryOpType.LessEqual | BinaryOpType.NotEqual:
+            case (
+                BinaryOpType.GreaterEqual
+                | BinaryOpType.LessEqual
+                | BinaryOpType.NotEqual
+            ):
                 self.emitter.opcode(Opcode.Not, pos)
 
     def define_var(self, name: Identifier):

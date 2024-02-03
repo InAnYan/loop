@@ -56,8 +56,17 @@ class Env:
         self.parent = parent
         self.scope = 0 if parent is None else parent.scope + 1
         self.defs = [
-            Local(THIS_IDENT, self.scope, False, True)
-        ]  # TODO: Check this not in class.
+            Local(
+                (
+                    Identifier(SourcePosition("", 0), "")
+                    if self.scope == 0
+                    else THIS_IDENT
+                ),
+                self.scope,
+                False,
+                True,
+            )
+        ]
         self.globals = []
         self.exports = []
         self.upvalues = []
@@ -98,9 +107,7 @@ class Env:
         name.ref_type = (
             RefType.LOCAL
             if self.scope > 0
-            else RefType.EXPORT
-            if export
-            else RefType.GLOBAL
+            else RefType.EXPORT if export else RefType.GLOBAL
         )
         name.ref_index = len(lst) - 1
 
@@ -258,8 +265,13 @@ class SemanticCheck(AstVisitor):
                 "double underscore at the begginning is not allowed in variable names",
             )
         """
-
-        self.env.resolve(expr.name)
+        if expr.name.text == "super":
+            if self.env.scope == 0:
+                self.error_listener.error(expr.pos, "cannot use super there")
+            else:
+                pass
+        else:
+            self.env.resolve(expr.name)
 
     def visit_FuncDecl(self, stmt: FuncDecl):
         self.visit_FuncProto(stmt, stmt.export)
@@ -294,7 +306,10 @@ class SemanticCheck(AstVisitor):
         self.check(stmt.expr)
 
     def visit_ClassDecl(self, stmt: ClassDecl):
-        self.env.define_var(stmt.name, stmt.export)
+        self.env.define_var(stmt.name, stmt.export, True)
+
+        if stmt.parent:
+            self.env.resolve(stmt.parent)
 
         self.new_class(stmt.name)
 
@@ -315,19 +330,22 @@ class SemanticCheck(AstVisitor):
         stmt.locals = self.env.end_block()
 
     def visit_Assignment(self, expr: Assignment):
-        self.check(expr.var)
+        match expr.var:
+            case VarExpr(pos, name):
+                if name.text == "super" or not self.env.check_assignable(name):
+                    self.error_listener.error(
+                        expr.pos, "cannot assign '" + name.text + "'"
+                    )
+                else:
+                    self.check(expr.var)
+
+            case GetAttrExpr() | GetItemExpr():
+                self.check(expr.var)
+
+            case _:
+                self.error_listener.error(expr.pos, "invalid assignment target")
+
         self.check(expr.expr)
-
-        if type(expr.var) == VarExpr:
-            name = expr.var.name
-            if not self.env.check_assignable(name):
-                self.error_listener.error(expr.pos, "cannot assign '" + name.text + "'")
-
-        if not check_assignment_target(expr.var):
-            self.error_listener.error(
-                expr.pos,
-                "invalid assignment target",
-            )
 
     # Utility.
 
@@ -341,9 +359,11 @@ class SemanticCheck(AstVisitor):
 
     def new_class(self, name: str):
         self.classes.append(ClassDef(name))
+        self.env.new_block()
 
     def end_class(self):
         assert self.classes
+        self.env.end_block()
         self.classes.pop()
 
     # Trivial.
@@ -407,8 +427,15 @@ class SemanticCheck(AstVisitor):
     def visit_NullLiteral(self, expr: NullLiteral):
         pass
 
+    def visit_ThrowStmt(self, stmt: ThrowStmt):
+        self.check(stmt.expr)
 
-def check_assignment_target(expr: Expr) -> bool:
-    match expr:
-        case VarExpr() | GetAttrExpr() | GetItemExpr():
-            return True
+    def visit_TryStmt(self, stmt: TryStmt):
+        self.check(stmt.try_block)
+
+        self.env.new_block()
+        self.env.define_var(stmt.catch_name, False, True)
+        self.check(stmt.catch_block)
+        stmt.catch_block.locals = (
+            self.env.end_block() + stmt.catch_block.locals
+        )  # Ooo, be very careful.

@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="loopvm"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="cJSON">
+				<Option output="/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/libcJSON.a" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl"/>
+				<Option object_output="./"/>
+				<Option type="2"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DLOOP_COMPILE_UNIX"/>
+					<Add directory="/mnt/d/Programming/Loop/loopvm/c/src/libs/cJSON"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/11/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 cJSON"/>
+					<CompileFile command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="cJSON/fast">
+				<Option output="/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/libcJSON.a" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl"/>
+				<Option object_output="./"/>
+				<Option type="2"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DLOOP_COMPILE_UNIX"/>
+					<Add directory="/mnt/d/Programming/Loop/loopvm/c/src/libs/cJSON"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/11/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 cJSON/fast"/>
+					<CompileFile command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="cwalk">
+				<Option output="/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/libcwalk.a" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl"/>
+				<Option object_output="./"/>
+				<Option type="2"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DLOOP_COMPILE_UNIX"/>
+					<Add directory="/mnt/d/Programming/Loop/loopvm/c/src/libs/cwalk"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/11/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 cwalk"/>
+					<CompileFile command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="cwalk/fast">
+				<Option output="/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/libcwalk.a" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl"/>
+				<Option object_output="./"/>
+				<Option type="2"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DLOOP_COMPILE_UNIX"/>
+					<Add directory="/mnt/d/Programming/Loop/loopvm/c/src/libs/cwalk"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/11/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 cwalk/fast"/>
+					<CompileFile command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="loopvm">
+				<Option output="/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/loopvm" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DLOOP_COMPILE_UNIX"/>
+					<Add directory="/mnt/d/Programming/Loop/loopvm/c/src/libs"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/11/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 loopvm"/>
+					<CompileFile command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="loopvm/fast">
+				<Option output="/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/loopvm" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DLOOP_COMPILE_UNIX"/>
+					<Add directory="/mnt/d/Programming/Loop/loopvm/c/src/libs"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/11/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 loopvm/fast"/>
+					<CompileFile command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="edit_cache">
+				<Option working_dir="/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 edit_cache"/>
+					<CompileFile command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="rebuild_cache">
+				<Option working_dir="/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
+					<CompileFile command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j12 -f &quot;/mnt/d/Programming/Loop/loopvm/cmake-build-debug-wsl/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Chunk.c">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Chunk.h">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Common.h">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Error.c">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Error.h">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Filesystem.c">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Filesystem.h">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/HashTable.c">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/HashTable.h">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/MemoryManager.c">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/MemoryManager.h">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Object.c">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Object.h">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/ObjectType.c">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/ObjectType.h">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Objects/BoundMethod.c">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Objects/BoundMethod.h">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Objects/Class.c">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Objects/Class.h">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Objects/Closure.c">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Objects/Closure.h">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Objects/Dictionary.c">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Objects/Dictionary.h">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Objects/Function.c">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Objects/Function.h">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Objects/Instance.c">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Objects/Instance.h">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Objects/List.c">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Objects/List.h">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Objects/Module.c">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Objects/Module.h">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Objects/String.c">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Objects/String.h">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Objects/Upvalue.c">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Objects/Upvalue.h">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Opcode.c">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Opcode.h">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Value.c">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/Value.h">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/VirtualMachine.c">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/Loop/VirtualMachine.h">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/libs/cJSON/cJSON.c">
+			<Option target="cJSON"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/libs/cJSON/cJSON.h">
+			<Option target="cJSON"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/libs/cwalk/cwalk.c">
+			<Option target="cwalk"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/libs/cwalk/cwalk.h">
+			<Option target="cwalk"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/c/src/main.c">
+			<Option target="loopvm"/>
+		</Unit>
+		<Unit filename="/mnt/d/Programming/Loop/loopvm/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>

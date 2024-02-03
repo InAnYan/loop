@@ -48,6 +48,11 @@ class Opcode(Enum):
     GetUpvalue = 40
     SetUpvalue = 41
     CloseUpvalue = 42
+    Inherit = 43
+    SuperGet = 44
+    TryBegin = 45
+    TryEnd = 46
+    Throw = 47
 
 
 class LongInst(Enum):
@@ -58,6 +63,7 @@ class LongInst(Enum):
     Export = auto()
     GetExport = auto()
     SetExport = auto()
+    SuperGet = auto()
 
 
 class Value(ABC):
@@ -102,26 +108,6 @@ class IntegerValue(Value):
 
     def make_json_object_data(self) -> Any:
         return self.num
-
-
-@dataclass
-class BoolValue(Value):
-    b: bool
-
-    def get_type(self) -> str:
-        return "Boolean"
-
-    def make_json_object_data(self) -> Any:
-        return self.b
-
-
-@dataclass
-class NullValue(Value):
-    def get_type(self) -> str:
-        return "Null"
-
-    def make_json_object(self) -> Any:
-        return None
 
 
 @dataclass
