@@ -53,6 +53,8 @@ class Opcode(Enum):
     TryBegin = 45
     TryEnd = 46
     Throw = 47
+    # NEW
+    InstanceOf = 48
 
 
 class LongInst(Enum):

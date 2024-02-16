@@ -21,8 +21,10 @@ module: decl*
 import_decl: "import" STRING "as" IDENTIFIER _eos -> import_as
            | "import" "{" arg_list "}" "from" STRING _eos -> import_from
 
-var_decl: export "var" IDENTIFIER ["=" expr] _eos
-let_decl: export "let" IDENTIFIER ["=" expr] _eos
+var_decl: export "var" pattern ["=" expr] _eos
+let_decl: export "let" pattern ["=" expr] _eos
+// TODO: What about destructuring assignment? Probably is has some ambiguity with lists.
+// *a pattern should become then an expression also (because should be in list).
 
 func_decl: export "function" _func_body
 _func_body: IDENTIFIER "(" arg_list ")" block_stmt
@@ -42,6 +44,9 @@ export: EXPORT?
      | return_stmt
      | try_stmt
      | throw_stmt
+     | for_in_stmt
+     | break_stmt
+     | continue_stmt
      | expr_stmt
 
 print_stmt: "print" expr _eos
@@ -51,9 +56,16 @@ while_stmt: "while" expr block_stmt
 return_stmt: "return" [expr] _eos
 try_stmt: "try" block_stmt "catch" IDENTIFIER block_stmt
 throw_stmt: "throw" expr _eos
+for_in_stmt: "for" pattern "in" expr block_stmt
+break_stmt: "break" _eos
+continue_stmt: "continue" _eos
 expr_stmt: expr _eos
-
 _eos: ";"+
+
+?pattern: IDENTIFIER -> ident_pat
+        | "[" pat_list "]" -> list_pat
+
+pat_list: [pattern (","+ pattern)* ","*]
 
 ?expr: assignment
 
@@ -83,6 +95,7 @@ _eos: ";"+
 ?product: unary
         | product "*" unary -> mul
         | product "/" unary -> div
+        | product "is" unary -> is_expr
 
 ?unary: "+" unary -> add_unary
       | "-" unary -> neg

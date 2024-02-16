@@ -1,0 +1,14 @@
+import { PipelineCondition } from "../abstract";
+import { resolveCodePath, resolveModulePath } from "modulePathResolver";
+import "path" as path;
+
+class IfFileChangedCondition < PipelineCondition {
+    check(path) {
+        let resolvedPath = resolveCodePath(resolveModulePath(path));
+        if path.exists(path) && path.exists(resolvedPath) {
+            if path.getFileDate(resolvedPath) < path.getFileDate(path) {
+                return resolvedPath;
+            }
+        }
+    }
+}

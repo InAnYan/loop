@@ -1,21 +1,63 @@
 from __future__ import annotations
+from dataclasses import dataclass
 
-from enum import Enum, auto
-import os
-
-from loop_compiler.loop_ast.base import *
-from loop_compiler.loop_ast.module import *
-from loop_compiler.loop_ast.stmt import *
-from loop_compiler.loop_ast.expr import *
+from typing import List, Optional
+from loop_compiler.loop_ast.expr import (
+    Assignment,
+    BinaryOp,
+    BoolLiteral,
+    CallExpr,
+    DictionaryLiteral,
+    GetAttrExpr,
+    GetItemExpr,
+    IntegerLiteral,
+    ListLiteral,
+    NullLiteral,
+    StringLiteral,
+    UnaryOp,
+    VarExpr,
+)
+from loop_compiler.loop_ast.module import Module
+from loop_compiler.loop_ast.loop_patterns import IdentifierPattern, ListPattern, Pattern
+from loop_compiler.loop_ast.stmt import (
+    BlockStmt,
+    BreakStmt,
+    ClassDecl,
+    ContinueStmt,
+    ExprStmt,
+    ForInStmt,
+    FuncDecl,
+    IfStmt,
+    ImportAsStmt,
+    ImportFromStmt,
+    LetDecl,
+    Method,
+    PrintStmt,
+    ReturnStmt,
+    ThrowStmt,
+    TryStmt,
+    Upvalue,
+    VarDecl,
+    WhileStmt,
+)
+from loop_compiler.passes.read_file import read_loop_file
 
 from loop_compiler.util.error_listener import ErrorListener
-from loop_compiler.loop_ast.base import AstNode
+from loop_compiler.loop_ast.base import (
+    AstNode,
+    AstVisitor,
+    File,
+    Identifier,
+    RefType,
+    SourcePoint,
+    SourcePosition,
+)
 
 
 def perform_semantic_check(
-    file: File, error_listener: ErrorListener, module: Module
+    file: File, error_listener: ErrorListener, module: Module, **kwargs
 ) -> bool:
-    SemanticCheck(file, error_listener).check(module)
+    SemanticCheck(file, error_listener, **kwargs).check(module)
     return not error_listener.had_error
 
 
@@ -32,7 +74,9 @@ class ClassDef:
     name: Identifier
 
 
-THIS_IDENT = Identifier(SourcePosition("", 0), "this", RefType.LOCAL, 0)
+THIS_IDENT = Identifier(
+    SourcePosition("", SourcePoint(0, 0), SourcePoint(0, 0)), "this", RefType.LOCAL, 0
+)
 
 
 class Env:
@@ -58,7 +102,9 @@ class Env:
         self.defs = [
             Local(
                 (
-                    Identifier(SourcePosition("", 0), "")
+                    Identifier(
+                        SourcePosition("", SourcePoint(0, 0), SourcePoint(0, 0)), ""
+                    )
                     if self.scope == 0
                     else THIS_IDENT
                 ),
@@ -138,6 +184,9 @@ class Env:
         if self.resolve_global(name):
             return
 
+        if self.resolve_export(name):
+            return
+
         self.error_listener.error(name.pos, f"variable '{name.text}' is not defined")
 
     def resolve_local(self, name: Identifier) -> bool:
@@ -190,6 +239,18 @@ class Env:
 
         return False
 
+    def resolve_export(self, name: Identifier) -> bool:
+        if self.parent:
+            return self.parent.resolve_export(name)
+        else:
+            for deff in self.exports:
+                if deff.name.text == name.text:
+                    name.ref_type = deff.name.ref_type
+                    name.ref_index = deff.name.ref_index
+                    return True
+
+        return False
+
     # Very bad.
     def check_assignable(self, name: Identifier) -> bool:
         for deff in reversed(self.globals + self.exports + self.defs):
@@ -199,7 +260,12 @@ class Env:
         if self.parent:
             return self.parent.check_assignable(name)
 
-        assert False
+        raise Exception(f"not asssignable {name.text}, parent: {self.parent}")
+
+
+@dataclass
+class Loop:
+    scope: int
 
 
 class SemanticCheck(AstVisitor):
@@ -207,12 +273,16 @@ class SemanticCheck(AstVisitor):
     error_listener: ErrorListener
     env: Env
     classes: List[ClassDef]
+    loops: List[Loop]
+    compile_imported: bool
 
-    def __init__(self, file: File, error_listener: ErrorListener):
+    def __init__(self, file: File, error_listener: ErrorListener, **kwargs):
         self.file = file
         self.error_listener = error_listener
         self.env = Env("<script>", error_listener)
         self.classes = []
+        self.loops = []
+        self.compile_imported = kwargs.get("compile_imported", False)
 
     def check(self, node: AstNode):
         self.visit(node)
@@ -224,36 +294,62 @@ class SemanticCheck(AstVisitor):
     def visit_ImportAsStmt(self, stmt: ImportAsStmt):
         self.env.define_var(stmt.name, False, True)
 
-        self.check_imported(stmt.path)
+        if stmt.path != "builtins":
+            self.check_imported(stmt.path, stmt.pos)
 
     def visit_ImportFromStmt(self, stmt: ImportFromStmt):
-        raise Exception("should be lowered")
-        """
         if len(stmt.names) == 0:
             self.error_listener.error(stmt.pos, "empty import statement")
 
         for name in stmt.names:
-            self.env.define_var(name, False)
+            self.env.define_var(name, False, False)
 
-        self.check_imported(stmt.path)
-        """
+        self.check_imported(stmt.path, stmt.pos)
 
-    def check_imported(self, path: str):
-        from full_passes import full_passes
+    def check_imported(self, path: str, pos: SourcePosition):
+        from loop_compiler.full_passes import (
+            full_passes,
+            resolve_path,
+            str_to_loop_module_checked,
+        )
 
-        full_passes(self.error_listener, path + ".loop", self.file.path)
+        if self.compile_imported:
+            full_passes(self.error_listener, path + ".loop", pos)
+        else:
+            # TODO: Full passes has a check of times. But str to loop module not.
+            if file := read_loop_file(resolve_path(path + ".loop")):
+                str_to_loop_module_checked(
+                    self.error_listener, file, compile_imported=self.compile_imported
+                )
+            else:
+                self.error_listener.error(pos, f"file not found: '{path}'")
 
-    def visit_VarDecl(self, stmt: VarDecl):
-        if stmt.expr:
+    def visit_VarDecl(self, stmt: VarDecl, **kwargs):
+        collecting_globals = kwargs.get("collecting_globals", False)
+
+        if stmt.expr and not collecting_globals:
             self.check(stmt.expr)
 
-        self.env.define_var(stmt.name, stmt.export, False)
+        if collecting_globals or self.env.scope != 0:
+            self.pattern(stmt.pattern, stmt.export, False)
 
-    def visit_LetDecl(self, stmt: VarDecl):
-        if stmt.expr:
+    def pattern(self, pattern: Pattern, export: bool, is_final: bool):
+        match pattern:
+            case IdentifierPattern(pos, ident):
+                self.env.define_var(ident, export, is_final)
+            case ListPattern(patterns):
+                raise Exception("should be lowered")
+            case _:
+                raise NotImplementedError(f"unknown pattern: {pattern}")
+
+    def visit_LetDecl(self, stmt: VarDecl, **kwargs):
+        collecting_globals = kwargs.get("collecting_globals", False)
+
+        if stmt.expr and not collecting_globals:
             self.check(stmt.expr)
 
-        self.env.define_var(stmt.name, stmt.export, True)
+        if collecting_globals or self.env.scope != 0:
+            self.pattern(stmt.pattern, stmt.export, False)
 
     def visit_VarExpr(self, expr: VarExpr):
         # TODO: Removed dunder check because lowered before semantic check.
@@ -273,23 +369,27 @@ class SemanticCheck(AstVisitor):
         else:
             self.env.resolve(expr.name)
 
-    def visit_FuncDecl(self, stmt: FuncDecl):
-        self.visit_FuncProto(stmt, stmt.export)
+    def visit_FuncDecl(self, stmt: FuncDecl, **kwargs):
+        self.visit_FuncProto(stmt, stmt.export, **kwargs)
 
-    def visit_FuncProto(self, stmt: FuncDecl, export: bool):
-        self.env.define_var(stmt.name, export, True)
+    def visit_FuncProto(self, stmt: FuncDecl, export: bool, **kwargs):
+        collecting_globals = kwargs.get("collecting_globals", False)
 
-        self.new_env(stmt.name.text)
+        if collecting_globals or self.env.scope != 0:
+            self.env.define_var(stmt.name, export, True)
 
-        for arg in stmt.args:
-            self.env.define_var(arg, False, False)
+        if not collecting_globals:
+            self.new_env(stmt.name.text)
 
-        self.check(stmt.body)
+            for arg in stmt.args:
+                self.env.define_var(arg, False, False)
 
-        if self.env.upvalues:
-            stmt.upvalues = self.env.upvalues
+            self.check(stmt.body)
 
-        self.end_env()
+            if self.env.upvalues:
+                stmt.upvalues = self.env.upvalues
+
+            self.end_env()
 
     def visit_ReturnStmt(self, stmt: ReturnStmt):
         if not self.env.parent:
@@ -303,20 +403,25 @@ class SemanticCheck(AstVisitor):
                     stmt.pos, "malformed return statement in the init method"
                 )
 
-        self.check(stmt.expr)
+        if stmt.expr:
+            self.check(stmt.expr)
 
-    def visit_ClassDecl(self, stmt: ClassDecl):
-        self.env.define_var(stmt.name, stmt.export, True)
+    def visit_ClassDecl(self, stmt: ClassDecl, **kwargs):
+        collecting_globals = kwargs.get("collecting_globals", False)
 
-        if stmt.parent:
-            self.env.resolve(stmt.parent)
+        if collecting_globals or self.env.scope != 0:
+            self.env.define_var(stmt.name, stmt.export, True)
 
-        self.new_class(stmt.name)
+        if not collecting_globals:
+            if stmt.parent:
+                self.env.resolve(stmt.parent)
 
-        for method in stmt.methods:
-            self.check(method)
+            self.new_class(stmt.name)
 
-        self.end_class()
+            for method in stmt.methods:
+                self.check(method)
+
+            self.end_class()
 
     def visit_Method(self, stmt: Method):
         self.visit_FuncProto(stmt, False)
@@ -330,6 +435,8 @@ class SemanticCheck(AstVisitor):
         stmt.locals = self.env.end_block()
 
     def visit_Assignment(self, expr: Assignment):
+        # TODO: Destructuring.
+
         match expr.var:
             case VarExpr(pos, name):
                 if name.text == "super" or not self.env.check_assignable(name):
@@ -357,7 +464,7 @@ class SemanticCheck(AstVisitor):
         assert self.env.parent
         self.env = self.env.parent
 
-    def new_class(self, name: str):
+    def new_class(self, name: Identifier):
         self.classes.append(ClassDef(name))
         self.env.new_block()
 
@@ -369,10 +476,18 @@ class SemanticCheck(AstVisitor):
     # Trivial.
 
     def visit_Module(self, module: Module):
+        self.collect_globals(module)
+
         for stmt in module.stmts:
             self.check(stmt)
 
         module.globals_count = len(self.env.globals)
+
+    def collect_globals(self, module: Module):
+        for stmt in module.stmts:
+            match stmt:
+                case VarDecl() | LetDecl() | FuncDecl() | ClassDecl():
+                    self.visit(stmt, collecting_globals=True)
 
     def visit_PrintStmt(self, stmt: PrintStmt):
         self.check(stmt.expr)
@@ -385,7 +500,9 @@ class SemanticCheck(AstVisitor):
 
     def visit_WhileStmt(self, stmt: WhileStmt):
         self.check(stmt.condition)
+        self.loops.append(Loop(self.env.scope))
         self.check(stmt.block)
+        self.loops.pop()
 
     def visit_ExprStmt(self, stmt: ExprStmt):
         self.check(stmt.expr)
@@ -439,3 +556,22 @@ class SemanticCheck(AstVisitor):
         stmt.catch_block.locals = (
             self.env.end_block() + stmt.catch_block.locals
         )  # Ooo, be very careful.
+
+    def visit_ForInStmt(self, stmt: ForInStmt):
+        self.env.new_block()
+        self.pattern(stmt.pattern, False, True)
+        self.check(stmt.expr)
+        self.loops.append(Loop(self.env.scope))
+        self.check(stmt.body)
+        self.loops.pop()
+        stmt.body.locals = (
+            self.env.end_block() + stmt.body.locals
+        )  # Ooo, be very careful.
+
+    def visit_BreakStmt(self, stmt: BreakStmt):
+        if not self.loops:
+            self.error_listener.error(stmt.pos, "cannot break outside of loop")
+
+    def visit_ContinueStmt(self, stmt: ContinueStmt):
+        if not self.loops:
+            self.error_listener.error(stmt.pos, "cannot continue outside of loop")

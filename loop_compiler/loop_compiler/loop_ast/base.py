@@ -14,7 +14,14 @@ class File:
 @dataclass
 class SourcePosition:
     file: File
+    start: SourcePoint
+    end: SourcePoint
+
+
+@dataclass
+class SourcePoint:
     line: int
+    col: int
 
 
 @dataclass
@@ -38,11 +45,11 @@ class AstNode:
 
 
 class AstVisitor:
-    def visit(self, node: AstNode):
+    def visit(self, node: AstNode, *args, **kwargs):
         node_name = type(node).__name__
         fn = getattr(self, "visit_" + node_name, None)
         if fn:
-            return fn(node)
+            return fn(node, *args, **kwargs)
         else:
             raise Exception(
                 f"Unhandled visiting of {node_name} in {type(self).__name__}"

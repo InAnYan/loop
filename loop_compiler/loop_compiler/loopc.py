@@ -11,7 +11,9 @@ def main():
         sys.exit(2)
 
     in_path = sys.argv[1]
-    if not full_passes(DefaultErrorListener(), in_path + ".loop"):
+    if not full_passes(
+        DefaultErrorListener(), in_path + ".loop", compile_imported=True
+    ):
         sys.exit(3)
 
 

@@ -15,6 +15,7 @@ from lark.tree import Meta
 
 from loop_compiler.loop_ast.base import *
 from loop_compiler.loop_ast.expr import *
+from loop_compiler.loop_ast.loop_patterns import IdentifierPattern, ListPattern
 from loop_compiler.loop_ast.stmt import *
 from loop_compiler.loop_ast.module import *
 
@@ -32,15 +33,25 @@ def parse_loop_module(error_listener: ErrorListener, file: File) -> Optional[Mod
         nonlocal had_error, error_listener, file
 
         had_error = True
+        # TODO: end_range is not correct.
+        end_range = 1
         match error:
             case UnexpectedToken():
                 err_str = f"unexpected token {error.token}"
+                end_range = len(error.token)
             case UnexpectedEOF():
                 err_str = "unexpected end of file"
             case UnexpectedCharacters():
                 err_str = "unexpected characters"
 
-        error_listener.error(SourcePosition(file, error.line), err_str)
+        error_listener.error(
+            SourcePosition(
+                file,
+                SourcePoint(error.line, error.column),
+                SourcePoint(error.line, error.column + end_range),
+            ),
+            err_str,
+        )
 
         # TODO: Add synchronization.
 
@@ -50,19 +61,21 @@ def parse_loop_module(error_listener: ErrorListener, file: File) -> Optional[Mod
         grammar = grammar_file.read()
         lark = Lark(grammar, parser="lalr", start="module", propagate_positions=True)
 
-        # TODO: Try except does not work.
+        # TODO: Lark error handling not working.
         try:
             tree = lark.parse(file.contents, on_error=handle_error)
-
-            if had_error:
-                return None
-
-            transformer = LarkTreeToLoopAst(file)
-            return transformer.transform(tree)
         except UnexpectedEOF as e:
-            error_listener.error(SourcePosition(file, e.line), "unexpected end of file")
+            handle_error(e)
+        except UnexpectedToken as e:
+            handle_error(e)
         except UnexpectedCharacters as e:
-            error_listener.error(SourcePosition(file, e.line), "unexpected characters")
+            handle_error(e)
+
+        if had_error:
+            return None
+
+        transformer = LarkTreeToLoopAst(file)
+        return transformer.transform(tree)
 
 
 def unary_op(op: UnaryOpType) -> Callable[[Expr], UnaryOp]:
@@ -124,8 +137,8 @@ class LarkTreeToLoopAst(Transformer):
 
     # Statements.
 
-    def module(self, _meta: Meta, *stmts: List[Stmt]) -> Module:
-        return Module(self.file.path, stmts)
+    def module(self, _meta: Meta, *stmts: Stmt) -> Module:
+        return Module(self.file.path, list(stmts))
 
     def import_as(
         self, meta: Meta, path: StringLiteral, as_name: Identifier
@@ -137,8 +150,8 @@ class LarkTreeToLoopAst(Transformer):
     ) -> ImportFromStmt:
         return ImportFromStmt(self.make_pos(meta), names, path.text)
 
-    def block_stmt(self, meta: Meta, *stmts: List[Stmt]) -> BlockStmt:
-        return BlockStmt(self.make_pos(meta), stmts)
+    def block_stmt(self, meta: Meta, *stmts: Stmt) -> BlockStmt:
+        return BlockStmt(self.make_pos(meta), list(stmts))
 
     print_stmt = tree(PrintStmt)
     expr_stmt = tree(ExprStmt)
@@ -165,6 +178,10 @@ class LarkTreeToLoopAst(Transformer):
     try_stmt = tree(TryStmt)
     throw_stmt = tree(ThrowStmt)
 
+    for_in_stmt = tree(ForInStmt)
+    break_stmt = tree(BreakStmt)
+    continue_stmt = tree(ContinueStmt)
+
     # Expressions.
 
     assignment = tree(Assignment)
@@ -185,6 +202,8 @@ class LarkTreeToLoopAst(Transformer):
     mul = bin_op(BinaryOpType.Multiply)
     div = bin_op(BinaryOpType.Divide)
 
+    is_expr = bin_op(BinaryOpType.Is)
+
     add_unary = unary_op(UnaryOpType.Plus)
     neg = unary_op(UnaryOpType.Negate)
     logical_not = unary_op(UnaryOpType.Not)
@@ -201,6 +220,13 @@ class LarkTreeToLoopAst(Transformer):
 
     expr_list = some_list(Expr)
     dict_list = some_list(DictionaryPair)
+
+    # Patterns.
+
+    ident_pat = tree(IdentifierPattern)
+
+    def list_pat(self, meta: Meta, *patterns: Pattern) -> ListPattern:
+        return ListPattern(self.make_pos(meta), list(patterns))
 
     # Tokens.
 
@@ -223,4 +249,13 @@ class LarkTreeToLoopAst(Transformer):
     # Private.
 
     def make_pos(self, token: Token | Meta) -> SourcePosition:
-        return SourcePosition(self.file, token.line)
+        assert token.line
+        assert token.column
+        assert token.end_line
+        assert token.end_column
+
+        return SourcePosition(
+            self.file,
+            SourcePoint(token.line, token.column),
+            SourcePoint(token.end_line, token.end_column),
+        )

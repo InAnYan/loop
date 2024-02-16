@@ -45,7 +45,10 @@ ObjectModule *ObjectModuleFromJSON(VirtualMachine *vm, ObjectString *path, const
     assert(put_res);
 
     ChunkFromJSON(&module->script->chunk, vm, module, chunk_json);
+
+#ifdef CHUNK_DISASM_AFTER_READING
     ChunkDisassemble(&module->script->chunk, DEBUG_OUT, module->script->name->str);
+#endif
 
     return module;
 }

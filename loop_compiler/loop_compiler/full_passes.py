@@ -1,6 +1,7 @@
+import os
 from typing import Iterable, Optional
-
-from loop_compiler.loop_ast.module import *
+from loop_compiler.loop_ast.base import File, SourcePosition
+from loop_compiler.loop_ast.module import Module, get_compiled_path
 
 from loop_compiler.passes.lower_ast_after import lower_after_module
 from loop_compiler.passes.lower_ast_before import lower_before_module
@@ -14,7 +15,10 @@ from loop_compiler.util.error_listener import ErrorListener
 
 
 def full_passes(
-    error_listener: ErrorListener, path: str, parent_path: Optional[str] = None
+    error_listener: ErrorListener,
+    path: str,
+    parent_pos: Optional[SourcePosition] = None,
+    **kwargs,
 ) -> Optional[bool]:
     resolved = resolve_path(path)
     compiled = get_compiled_path(resolved)
@@ -27,30 +31,31 @@ def full_passes(
     # print(f"FULL CurDir: {os.getcwd()} Path: {path} | Resolved: {resolved} | Compiled: {compiled}")
 
     if file := read_loop_file(resolved):
-        if module := parse_loop_module(error_listener, file):
-            lowered = lower_before_module(module)
-
-            with new_cd(os.path.dirname(resolved)):
-                semantic_pass = perform_semantic_check(file, error_listener, lowered)
-
-            if semantic_pass:
-                lowered = lower_after_module(lowered)
-                if chunk := compile_module(error_listener, lowered):
-                    return write_chunk(compiled, chunk)
-                else:
-                    error_listener.error_no_pos(
-                        f"failed to compile: '{resolved}'", parent_path
-                    )
-            else:
-                error_listener.error_no_pos(
-                    f"failed semantic check: '{resolved}'", parent_path
-                )
-        else:
-            error_listener.error_no_pos(f"failed to parse: '{resolved}'", parent_path)
+        if module := str_to_loop_module_checked(error_listener, file, **kwargs):
+            if chunk := compile_module(error_listener, module):
+                return write_chunk(compiled, chunk)
     else:
-        error_listener.error_no_pos(f"file not found: '{path}'", parent_path)
+        error_listener.error(parent_pos, f"file not found: '{path}'")
 
     return False
+
+
+def str_to_loop_module_checked(
+    error_listener: ErrorListener,
+    file: File,
+    **kwargs,
+) -> Optional[Module]:
+    if module := parse_loop_module(error_listener, file):
+        lowered = lower_before_module(module)
+
+        with new_cd(os.path.dirname(file.path)):
+            semantic_pass = perform_semantic_check(
+                file, error_listener, lowered, **kwargs
+            )
+
+        if semantic_pass:
+            lowered = lower_after_module(lowered)
+            return lowered
 
 
 def resolve_path(path: str) -> str:
@@ -66,6 +71,8 @@ def generate_search_paths() -> Iterable[str]:
     yield ""
     if val := os.environ.get("LOOP_PACKAGES_PATH"):
         yield val
+    else:
+        yield "/mnt/d/Programming/Loop/packages"  # TODO: Delete
 
 
 # Source: https://stackoverflow.com/questions/75048986/way-to-temporarily-change-the-directory-in-python-to-execute-code-without-affect

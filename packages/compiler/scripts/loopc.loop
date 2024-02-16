@@ -1,0 +1,13 @@
+import "system" as system;
+import { doFullPasses, COMPILE_ERROR_CODE } from "fullPasses";
+
+if system.args.length != 2 {
+    system.out.writeln("error: wrong arguments count");
+    system.out.writeln("usage: loopc <path>");
+}
+
+let path = system.args[1];
+
+if !doFullPasses(path) {
+    system.exit(COMPILE_ERROR_CODE)
+}

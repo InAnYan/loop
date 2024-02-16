@@ -1,0 +1,39 @@
+{
+  "name": "loop",
+  "displayName": "Loop",
+  "description": "",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.86.0"
+  },
+  "publisher": "InAnYan",
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "loop",
+        "aliases": [
+          "Loop",
+          "loop"
+        ],
+        "extensions": [
+          ".loop"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "loop",
+        "scopeName": "source.loop",
+        "path": "./syntaxes/loop.tmLanguage.json"
+      }
+    ]
+  },
+  "main": "src/extension.js",
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  }
+}

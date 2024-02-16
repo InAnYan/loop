@@ -1,0 +1,10 @@
+import "system" as system;
+import { doFullPasses, COMPILE_ERROR_CODE } from "../fullPasses";
+
+export function runAndCompileLoop(path) {
+    if !doFullPasses(path) {
+        return COMPILE_ERROR_CODE;
+    }
+
+    return system.exec("loopvm", [path]);
+}

@@ -1,0 +1,177 @@
+import { NotImplementedError } from "exceptions";
+import { TestSuite } from "tests";
+
+class RegularExpression {
+    match(str) {
+        throw NotImplementedError("RegularExpression::match in " + this.type.toString());
+    }
+}
+
+class LetterSetExpr < RegularExpression {
+    // TODO: Default values.
+    init(letters, isComplement) {
+        this.letters = letters;
+        this.isComplement = isComplement;
+    }
+
+    match(str) {
+        if str.empty() {
+            if this.letters.empty() {
+                return ["", str];
+            } else {
+                return null;
+            }
+        }
+
+        let [head, tail] = str;
+
+        let headBelongs = this.letters.has(head);
+        if this.isComplement {
+            headBelongs = !headBelongs;
+        }
+
+        if headBelongs {
+            return [head, tail];
+        } else {
+            return null;
+        }
+    }
+}
+
+class LetterExpr < LetterSetExpr {
+    init(letter) {
+        super.init([leter], false);
+    }
+}
+
+class RepetitionExpr < RegularExpression {
+    init(rule) {
+        this.rule = rule;
+    }
+
+    match(str) {
+        var head;
+        var matched;
+
+        for _ in this.fromCount.range() {
+            let match = this.rule.match(str);
+            if !match {
+                return [matched, str];
+            }
+
+            [head, str] = matched;
+
+            matched = matched + head;
+            workStr = tail;
+        }
+    }
+}
+
+class AlterationExpr < RegularExpression {
+    init(rules) {
+        this.rules = rules;
+    }
+
+    match(str) {
+        for rule in this.rules {
+            let match = rule.match(str);
+            if match {
+                return match;
+            }
+        }
+
+        return null;
+    }
+}
+
+class SequenceExpr < RegularExpression {
+    init(rules) {
+        this.rules = rules;
+    }
+
+    match(str) {
+        var head;
+        var matched;
+
+        for rule in this.rules {
+            let match = rule.match(str);
+            if !match {
+                return null;
+            }
+
+            [head, str] = match;
+
+            matched = matched + head;
+        }
+
+        return matched;
+    }
+}
+
+function KleenePlus(rule) {
+    return SequenceExpr([rule, RepetitionExpr(rule)]);
+}
+
+class RegularExpressionTests < TestSuite {
+    testletterSetOne() {
+        let regex = LetterExpr("a");
+        this.accept("abc");
+        this.reject("cba");
+    }
+
+    testletterSetSeveral() {
+        let regex = LetterSetExpr("aouie".separateChars(), false);
+        this.accept(regex, "iee");
+        this.reject(regex, "noo");
+    }
+
+    testletterSetSeveralComplement() {
+        let regex = LetterSetExpr("aouie".separateChars(), true);
+        this.accept(regex, "yes");
+        this.reject(regex, "noo");
+    }
+
+    testRepetition() {
+        let regex = RepetitionExpr(LetterExpr("a")); 
+        this.accept(regex, "aaabbb");
+        this.reject(regex, "bbbaaa");
+    }
+
+    testAlteration() {
+        let var1 = LetterExpr("a");
+        let var2 = LetterExpr("b");
+        let regex = AlterationExpr([var1, var2]);
+        this.accept(regex, "abb");
+        this.accept(regex, "baa");
+        this.reject(regex, "ccc");
+    }
+
+    testSequence() {
+        let var1 = LetterExpr("a");
+        let var2 = LetterExpr("b");
+        let regex = SequenceExpr([var1, var2]);
+        this.accept(regex, "abc");
+        this.reject(regex, "bab");
+        this.reject(regex, "cab");
+    }
+
+    testComplex() {
+        let alphabet = LetterSetExpr("abc".separateChars(), false);
+        let numbers = LetterSetExpr("123".separateChars(), false);
+        let regex = SequenceExpr([KleenePlus(alphabet), KleenePlus(numbers)]);
+        this.accept("abc123");
+        this.accept("c3");
+        this.reject("abc");
+        this.reject("123");
+        this.reject("123abc");
+    }
+
+    accept(regex, str) {
+        // TODO: String interpolation.
+        this.assert(regex.match(str), "${regex} <=> ${str}");
+    }
+
+    reject(regex, str) {
+        this.assert(!regex.match(str), "${regex} <!=> ${str}");
+    }
+}

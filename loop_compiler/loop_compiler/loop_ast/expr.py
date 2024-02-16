@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import List
+from loop_compiler.loop_ast.base import AstNode, Identifier
 
-from loop_compiler.loop_ast.base import *
 from loop_compiler.loop_ast.repr import Opcode
 
 
@@ -80,6 +80,8 @@ class BinaryOpType(Enum):
     Multiply = auto()
     Divide = auto()
 
+    Is = auto()
+
     def to_opcode(self) -> Opcode:
         match self:
             case self.LogicalOr:
@@ -112,6 +114,9 @@ class BinaryOpType(Enum):
                 return Opcode.Multiply
             case self.Divide:
                 return Opcode.Divide
+
+            case self.Is:
+                return Opcode.InstanceOf
 
 
 @dataclass

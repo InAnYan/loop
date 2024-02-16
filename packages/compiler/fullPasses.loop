@@ -1,0 +1,21 @@
+import { CompilerPipeline } from "abstract";
+
+import { IfFileChangedCondition } from "loop/ifFileChangedCondition";
+import { FileReader } from "loop/fileReader";
+import { Scanner } from "loop/scanner";
+import { Parser } from "loop/parser";
+import { SemanticChecker } from "loop/semanticChecker";
+import { Compiler } from "loop/compiler";
+import { FileWriter } from "loop/fileWriter";
+
+function doFullPasses(errorReporter, path, parentPos) {
+    let loopCompiler = CompilerPipeline(errorReporter, parentPos);
+    loopCompiler.addCondition("file changed", IfFileChangedCondition());
+    loopCompiler.addPipe("reading the source file", FileReader(errorReporter));
+    loopCompiler.addPipe("scanning", Scanner(errorReporter));
+    loopCompiler.addPipe("parsing", Parser(errorReporter));
+    loopCompiler.addPipe("semantic checking", SemanticChecker(errorReporter));
+    loopCompiler.addPipe("compiling", Compiler(errorReporter));
+    loopCompiler.addPipe("code writing", FileWriter(errorReporter));
+    return loopCompiler.perform(path);
+}

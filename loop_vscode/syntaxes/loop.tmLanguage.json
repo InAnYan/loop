@@ -1,0 +1,103 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Loop",
+	"scopeName": "source.loop",
+	"patterns": [
+		{
+			"include": "#keyword.control"
+		},
+		{
+			"include": "#keyword.other"
+		},
+		{
+			"include": "#keyword.operator"
+		},
+		{
+			"include": "#variable.language"
+		},
+		{
+			"include": "#constant.language"
+		},
+		{
+			"include": "#entity.name.class"
+		},
+		{
+			"include": "#storage.modifier"
+		},
+		{
+			"include": "#storage.type"
+		},
+		{
+			"include": "#variable"
+		},
+		{
+			"include": "#constant.numeric"
+		},
+		{
+			"include": "#comment.line"
+		},
+		{
+			"include": "#comment.block"
+		},
+		{
+			"include": "#strings"
+		}
+	],
+	"repository": {
+		"keyword.control": {
+			"name": "keyword.control",
+			"match": "\\b(if|else|while|return|for|unlesss|do|until|print|try|catch|throw|break|continue)\\b"
+		},
+		"keyword.other": {
+			"name": "keyword.other.loop",
+			"match": "\\b(import|as|from|in|is)\\b"
+		},
+		"keyword.operator": {
+			"name": "keyword.operator.loop",
+			"match": "\\+|\\-|\\!|\\*|\\/|\\%|\\&|\\||\\<|\\>|\\=|\\>\\=|\\<\\="
+		},
+		"storage.modifier": {
+			"name": "storage.modifier.loop",
+			"match": "\\b(export)\\b"
+		},
+		"storage.type": {
+			"name": "storage.type.loop",
+			"match": "\\b(var|let|class|function)\\b"
+		},
+		"variable.language": {
+			"name": "variable.language",
+			"match": "\\b(this|super|type)\\b"
+		},
+		"constant.language": {
+			"name": "constant.language.loop",
+			"match": "\\b(true|false|null)\\b"
+		},
+		"variable": {
+			"name": "variable",
+			"match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+		},
+		"constant.numeric": {
+			"name": "constant.numeric.loop",
+			"match": "\\b([0-9][0-9]*\\.?[0-9]+)\\b"
+		},
+		"comment.line": {
+			"name": "comment.line.double-slash.loop",
+			"match": "//.*"
+		},
+		"comment.block": {
+			"name": "comment.block.loop",
+			"match": "\\/\\*.*\\*\\/"
+		},
+		"strings": {
+			"name": "string.quoted.double.loop",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.loop",
+					"match": "\\\\."
+				}
+			]
+		}
+	}
+}

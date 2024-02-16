@@ -1,0 +1,5 @@
+/mnt/d/Programming/Loop/loopvm/cmake-build-release-wsl/CMakeFiles/cJSON.dir
+/mnt/d/Programming/Loop/loopvm/cmake-build-release-wsl/CMakeFiles/cwalk.dir
+/mnt/d/Programming/Loop/loopvm/cmake-build-release-wsl/CMakeFiles/loopvm.dir
+/mnt/d/Programming/Loop/loopvm/cmake-build-release-wsl/CMakeFiles/edit_cache.dir
+/mnt/d/Programming/Loop/loopvm/cmake-build-release-wsl/CMakeFiles/rebuild_cache.dir

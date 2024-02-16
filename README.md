@@ -43,3 +43,6 @@ Currently there is no release packages and the installation is a little bit daun
 - Add new packages.
 - Write the compiler in Loop.
 - Write a formatter and an LSP server.
+
+## Some info about spec
+Names starting with "_" are internal and they can be redefined. The only thing that user can create is "_" variable (ignore).

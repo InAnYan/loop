@@ -1,0 +1,56 @@
+import { Exception, NotImplementedError } from "exceptions";
+
+export let COMPILE_ERROR_CODE = 128;
+
+export class CompilerPipeline {
+    init() {
+        this.conditions = [];
+        this.pipes = [];
+    }
+
+    addCondition(name, cond) {
+        this.conditions.push([name, cond]);
+    }
+
+    addPipe(name, pipe) {
+        this.pipes.push([name, pipe]);
+    }
+
+    perform(object) {
+        for condition in this.conditions {
+            if !condition() {
+                return null;
+            }
+        }
+
+        for [name, pipe] in this.pipes {
+            try {
+                object = pipe(object);
+            } catch e {
+                if e is PipelineStopException {
+                    break;
+                }
+            }
+
+            if object == null {
+                break;
+            }
+        }
+
+        return object;
+    }
+}
+
+export class PipelineCondition {
+    check() {
+        throw NotImplementedError();
+    }
+}
+
+export class PipelinePipe {
+    perform(object) {
+        throw NotImplementedError();
+    }
+}
+
+export class PipelineStopException < Exception {}

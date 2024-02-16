@@ -41,7 +41,10 @@ class BaseCompiler(AstVisitor):
         for stmt in module.stmts:
             self.compile(stmt)
 
-        last_pos = make_last_pos(module.stmts, SourcePosition(module.path, 1))
+        last_pos = make_last_pos(
+            module.stmts,
+            SourcePosition(module.path, SourcePoint(0, 0), SourcePoint(0, 1)),
+        )  # TODO: module.path is not right.
         self.emitter.opcode(Opcode.ModuleEnd, last_pos)
 
     def visit_ImportAsStmt(self, stmt: ImportAsStmt):

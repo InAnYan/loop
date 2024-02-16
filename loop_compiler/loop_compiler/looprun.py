@@ -11,6 +11,7 @@ def run_and_compile_loop(path: str, **kwargs) -> Optional[Popen]:
     if not full_passes(
         SilentErrorListener() if kwargs.get("silent_el") else DefaultErrorListener(),
         path + ".loop",
+        compile_imported=True,
     ):
         return None
 

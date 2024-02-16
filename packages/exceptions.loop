@@ -1,0 +1,11 @@
+import { Exception } from "builtins";
+
+export class NotImplementedError < Exception {
+    init(what) {
+        this.what = what;
+    }
+
+    toString() {
+        return "not implemented " + this.what.toString();
+    }
+}

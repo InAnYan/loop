@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
 from typing import List, Optional
+from loop_compiler.loop_ast.base import AstNode, Identifier
 
-from loop_compiler.loop_ast.base import *
 from loop_compiler.loop_ast.expr import Expr
+from loop_compiler.loop_ast.loop_patterns import Pattern
 
 
 @dataclass
@@ -35,14 +36,14 @@ class ExprStmt(Stmt):
 @dataclass
 class VarDecl(Stmt):
     export: bool
-    name: Identifier
+    pattern: Pattern
     expr: Optional[Expr] = None
 
 
 @dataclass
 class LetDecl(Stmt):
     export: bool
-    name: Identifier
+    pattern: Pattern
     expr: Optional[Expr] = None
 
 
@@ -110,3 +111,20 @@ class TryStmt(Stmt):
 @dataclass
 class ThrowStmt(Stmt):
     expr: Expr
+
+
+@dataclass
+class ForInStmt(Stmt):
+    pattern: Pattern
+    expr: Expr
+    body: BlockStmt
+
+
+@dataclass
+class BreakStmt(Stmt):
+    pass
+
+
+@dataclass
+class ContinueStmt(Stmt):
+    pass

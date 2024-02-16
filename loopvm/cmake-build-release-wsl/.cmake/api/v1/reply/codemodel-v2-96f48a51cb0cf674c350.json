@@ -1,0 +1,78 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"jsonFile" : "directory-.-Release-f5ebdc15457944623624.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.22"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				}
+			],
+			"name" : "Release",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "loopvm",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "cJSON::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-cJSON-Release-dad152fd6a7e8aac9bde.json",
+					"name" : "cJSON",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "cwalk::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-cwalk-Release-090f2fdbb535a3aef7be.json",
+					"name" : "cwalk",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "loopvm::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-loopvm-Release-ecd1643aff041303f018.json",
+					"name" : "loopvm",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/mnt/d/Programming/Loop/loopvm/cmake-build-release-wsl",
+		"source" : "/mnt/d/Programming/Loop/loopvm"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 6
+	}
+}

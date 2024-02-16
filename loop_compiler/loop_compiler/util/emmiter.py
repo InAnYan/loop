@@ -103,7 +103,7 @@ class Emitter:
 
         self.code.append(byte)
 
-        if pos.line == len(self.lines) - 1:
+        if pos.start.line == len(self.lines) - 1:
             self.lines[-1] += 1
         else:
             self.lines.append(0)
