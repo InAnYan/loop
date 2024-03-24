@@ -27,7 +27,7 @@ The implementation was evolved from code in Crafting Interpreters by Bob Nystrom
 - Object-oriented programming.
 
 ## Status
-Currently in active development. There is no builtins and no functions on the data structures (strings, lists, and dictionaries).
+Currently in not active development. There is no builtins and no functions on the data structures (strings, lists, and dictionaries).
 
 ## Usage
 Currently there is no release packages and the installation is a little bit daunting.
